@@ -893,7 +893,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "5";
+	app.meta.h["build"] = "6";
 	app.meta.h["company"] = "HaxeFlixel";
 	app.meta.h["file"] = "BasicPlatformer";
 	app.meta.h["name"] = "BasicPlatformer";
@@ -4688,7 +4688,7 @@ ManifestResources.init = function(config) {
 	openfl_text_Font.registerFont(_$_$ASSET_$_$OPENFL_$_$flixel_$fonts_$nokiafc22_$ttf);
 	openfl_text_Font.registerFont(_$_$ASSET_$_$OPENFL_$_$flixel_$fonts_$monsterrat_$ttf);
 	var bundle;
-	var data = "{\"name\":null,\"assets\":\"aoy4:pathy27:assets%2Ftiled%2Fsecond.tmxy4:sizei30917y4:typey4:TEXTy2:idR1y7:preloadtgoR0y38:assets%2Ftiled%2Fsimple_tileset_32.pngR2i6289R3y5:IMAGER5R7R6tgoR0y38:assets%2Ftiled%2Fsimple_tileset_32.tsxR2i244R3R4R5R9R6tgoR2i2114R3y5:MUSICR5y26:flixel%2Fsounds%2Fbeep.mp3y9:pathGroupaR11y26:flixel%2Fsounds%2Fbeep.ogghR6tgoR2i39706R3R10R5y28:flixel%2Fsounds%2Fflixel.mp3R12aR14y28:flixel%2Fsounds%2Fflixel.ogghR6tgoR2i5794R3y5:SOUNDR5R13R12aR11R13hgoR2i33629R3R16R5R15R12aR14R15hgoR2i15744R3y4:FONTy9:classNamey35:__ASSET__flixel_fonts_nokiafc22_ttfR5y30:flixel%2Ffonts%2Fnokiafc22.ttfR6tgoR2i29724R3R17R18y36:__ASSET__flixel_fonts_monsterrat_ttfR5y31:flixel%2Ffonts%2Fmonsterrat.ttfR6tgoR0y33:flixel%2Fimages%2Fui%2Fbutton.pngR2i519R3R8R5R23R6tgoR0y36:flixel%2Fimages%2Flogo%2Fdefault.pngR2i3280R3R8R5R24R6tgh\",\"rootPath\":null,\"version\":2,\"libraryArgs\":[],\"libraryType\":null}";
+	var data = "{\"name\":null,\"assets\":\"aoy4:pathy27:assets%2Ftiled%2Fsecond.tmxy4:sizei15981y4:typey4:TEXTy2:idR1y7:preloadtgoR0y38:assets%2Ftiled%2Fsimple_tileset_32.pngR2i7553R3y5:IMAGER5R7R6tgoR0y38:assets%2Ftiled%2Fsimple_tileset_32.tsxR2i244R3R4R5R9R6tgoR2i2114R3y5:MUSICR5y26:flixel%2Fsounds%2Fbeep.mp3y9:pathGroupaR11y26:flixel%2Fsounds%2Fbeep.ogghR6tgoR2i39706R3R10R5y28:flixel%2Fsounds%2Fflixel.mp3R12aR14y28:flixel%2Fsounds%2Fflixel.ogghR6tgoR2i5794R3y5:SOUNDR5R13R12aR11R13hgoR2i33629R3R16R5R15R12aR14R15hgoR2i15744R3y4:FONTy9:classNamey35:__ASSET__flixel_fonts_nokiafc22_ttfR5y30:flixel%2Ffonts%2Fnokiafc22.ttfR6tgoR2i29724R3R17R18y36:__ASSET__flixel_fonts_monsterrat_ttfR5y31:flixel%2Ffonts%2Fmonsterrat.ttfR6tgoR0y33:flixel%2Fimages%2Fui%2Fbutton.pngR2i519R3R8R5R23R6tgoR0y36:flixel%2Fimages%2Flogo%2Fdefault.pngR2i3280R3R8R5R24R6tgh\",\"rootPath\":null,\"version\":2,\"libraryArgs\":[],\"libraryType\":null}";
 	var manifest = lime_utils_AssetManifest.parse(data,ManifestResources.rootPath);
 	var library = lime_utils_AssetLibrary.fromManifest(manifest);
 	lime_utils_Assets.registerLibrary("default",library);
@@ -5926,16 +5926,14 @@ PlayState.prototype = $extend(flixel_FlxState.prototype,{
 		}
 		flixel_FlxState.prototype.update.call(this,elapsed);
 		this.level.collideWithGround(this.player);
-		this.level.collideWithDestructible(this.player);
-		if(this.level.overlapsWithSpike(this.player,this.spike_height)) {
-			haxe_Log.trace("DEAD",{ fileName : "source/PlayState.hx", lineNumber : 199, className : "PlayState", methodName : "update"});
-			var nextState = Type.createInstance(js_Boot.getClass(flixel_FlxG.game._state),[]);
-			if(flixel_FlxG.game._state.switchTo(nextState)) {
-				flixel_FlxG.game._requestedState = nextState;
-			}
+		var tmp;
+		if(!this.level.collideWithSpikes(this.player)) {
+			var _this = flixel_FlxG.keys.justPressed;
+			tmp = _this.keyManager.checkStatus(82,_this.status);
+		} else {
+			tmp = true;
 		}
-		var _this = flixel_FlxG.keys.justPressed;
-		if(_this.keyManager.checkStatus(82,_this.status)) {
+		if(tmp) {
 			var nextState = Type.createInstance(js_Boot.getClass(flixel_FlxG.game._state),[]);
 			if(flixel_FlxG.game._state.switchTo(nextState)) {
 				flixel_FlxG.game._requestedState = nextState;
@@ -6415,6 +6413,10 @@ flixel_addons_editors_tiled_TiledMap.prototype = {
 	,__class__: flixel_addons_editors_tiled_TiledMap
 };
 var TiledLevel = function(tiledLevel,state) {
+	this.spikes_right_id = -1;
+	this.spikes_left_id = -1;
+	this.spikes_bot_id = -1;
+	this.spikes_height = 0;
 	flixel_addons_editors_tiled_TiledMap.call(this,tiledLevel);
 	this.imagesLayer = new flixel_group_FlxTypedGroup();
 	this.foregroundTiles = new flixel_group_FlxTypedGroup();
@@ -6483,52 +6485,50 @@ var TiledLevel = function(tiledLevel,state) {
 			this.backgroundLayer.add(tilemap);
 		} else {
 			this.foregroundTiles.add(tilemap);
-			if(Object.prototype.hasOwnProperty.call(tileLayer.properties.keys.h,"spikes")) {
-				if(this.spikeTileLayer == null) {
-					this.spikeTileLayer = [];
-				}
-				this.spikeTileLayer.push(tilemap);
-			} else if(Object.prototype.hasOwnProperty.call(tileLayer.properties.keys.h,"destructible")) {
-				var destructible_tile_id_str = tileLayer.properties.keys.h["destructible_id"];
-				if(destructible_tile_id_str == null) {
-					throw haxe_Exception.thrown("'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
-				}
-				var destructible_tile_id = [Std.parseInt(destructible_tile_id_str)];
+			if(this.groudTileLayer == null) {
+				this.groudTileLayer = [];
+			}
+			this.groudTileLayer.push(tilemap);
+			var destructible_id_str = tileLayer.properties.keys.h["destructible_id"];
+			if(destructible_id_str == null) {
+				haxe_Log.trace("'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.",{ fileName : "source/TiledLevel.hx", lineNumber : 131, className : "TiledLevel", methodName : "new"});
+			} else {
+				var destructible_id = [Std.parseInt(destructible_id_str)];
 				if(this.destructibleTileLayer == null) {
 					this.destructibleTileLayer = [];
 				}
 				this.destructibleTileLayer.push(tilemap);
-				tilemap.setTileProperties(destructible_tile_id[0] + 1,4369,(function(destructible_tile_id) {
+				tilemap.setTileProperties(destructible_id[0] + 1,4369,(function(destructible_id) {
 					return function(o1,o2) {
 						var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
 						tile.health -= 0.1;
 						if(tile.health <= 0.75) {
-							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_tile_id[0] + 2,true);
+							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_id[0] + 2,true);
 						}
 						return true;
 					};
-				})(destructible_tile_id));
-				tilemap.setTileProperties(destructible_tile_id[0] + 2,4369,(function(destructible_tile_id) {
+				})(destructible_id));
+				tilemap.setTileProperties(destructible_id[0] + 2,4369,(function(destructible_id) {
 					return function(o1,o2) {
 						var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
 						tile.health -= 0.1;
 						if(tile.health <= 0.5) {
-							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_tile_id[0] + 3,true);
+							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_id[0] + 3,true);
 						}
 						return true;
 					};
-				})(destructible_tile_id));
-				tilemap.setTileProperties(destructible_tile_id[0] + 3,4369,(function(destructible_tile_id) {
+				})(destructible_id));
+				tilemap.setTileProperties(destructible_id[0] + 3,4369,(function(destructible_id) {
 					return function(o1,o2) {
 						var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
 						tile.health -= 0.1;
 						if(tile.health <= 0.25) {
-							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_tile_id[0] + 4,true);
+							tile.tilemap.setTileByIndex(tile.mapIndex,destructible_id[0] + 4,true);
 						}
 						return true;
 					};
-				})(destructible_tile_id));
-				tilemap.setTileProperties(destructible_tile_id[0] + 4,4369,(function() {
+				})(destructible_id));
+				tilemap.setTileProperties(destructible_id[0] + 4,4369,(function() {
 					return function(o1,o2) {
 						var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
 						tile.health -= 0.1;
@@ -6538,11 +6538,30 @@ var TiledLevel = function(tiledLevel,state) {
 						return true;
 					};
 				})());
+			}
+			var spikes_height_str = tileLayer.properties.keys.h["spikes_height"];
+			if(spikes_height_str == null) {
+				haxe_Log.trace("'spikes_height' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.",{ fileName : "source/TiledLevel.hx", lineNumber : 182, className : "TiledLevel", methodName : "new"});
 			} else {
-				if(this.groudTileLayer == null) {
-					this.groudTileLayer = [];
-				}
-				this.groudTileLayer.push(tilemap);
+				this.spikes_height = Std.parseInt(spikes_height_str);
+			}
+			var spikes_bot_id_str = tileLayer.properties.keys.h["spikes_bot_id"];
+			if(spikes_bot_id_str == null) {
+				haxe_Log.trace("'spikes_bot_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.",{ fileName : "source/TiledLevel.hx", lineNumber : 189, className : "TiledLevel", methodName : "new"});
+			} else {
+				this.spikes_bot_id = Std.parseInt(spikes_bot_id_str) + 1;
+			}
+			var spikes_left_id_str = tileLayer.properties.keys.h["spikes_left_id"];
+			if(spikes_left_id_str == null) {
+				haxe_Log.trace("'spikes_left_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.",{ fileName : "source/TiledLevel.hx", lineNumber : 196, className : "TiledLevel", methodName : "new"});
+			} else {
+				this.spikes_left_id = Std.parseInt(spikes_left_id_str) + 1;
+			}
+			var spikes_right_id_str = tileLayer.properties.keys.h["spikes_right_id"];
+			if(spikes_right_id_str == null) {
+				haxe_Log.trace("'spikes_right_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.",{ fileName : "source/TiledLevel.hx", lineNumber : 203, className : "TiledLevel", methodName : "new"});
+			} else {
+				this.spikes_right_id = Std.parseInt(spikes_right_id_str) + 1;
 			}
 		}
 	}
@@ -6557,6 +6576,10 @@ TiledLevel.prototype = $extend(flixel_addons_editors_tiled_TiledMap.prototype,{
 	,groudTileLayer: null
 	,destructibleTileLayer: null
 	,spikeTileLayer: null
+	,spikes_height: null
+	,spikes_bot_id: null
+	,spikes_left_id: null
+	,spikes_right_id: null
 	,imagesLayer: null
 	,getAnimatedTile: function(props,tileset) {
 		var special = new flixel_addons_tile_FlxTileSpecial(1,false,false,0);
@@ -6641,7 +6664,6 @@ TiledLevel.prototype = $extend(flixel_addons_editors_tiled_TiledMap.prototype,{
 			exit.makeGraphic(32,32,-12632257);
 			state.exit = exit;
 			group.add(exit);
-			haxe_Log.trace("exit added",{ fileName : "source/TiledLevel.hx", lineNumber : 282, className : "TiledLevel", methodName : "loadObject"});
 			break;
 		case "player_start":
 			state.player.set_x(x);
@@ -6665,6 +6687,7 @@ TiledLevel.prototype = $extend(flixel_addons_editors_tiled_TiledMap.prototype,{
 		}
 	}
 	,collideWithGround: function(obj) {
+		var _gthis = this;
 		if(this.groudTileLayer == null) {
 			return false;
 		}
@@ -6673,36 +6696,40 @@ TiledLevel.prototype = $extend(flixel_addons_editors_tiled_TiledMap.prototype,{
 		while(_g < _g1.length) {
 			var map = _g1[_g];
 			++_g;
-			return map.overlapsWithCallback(obj,flixel_FlxObject.separate);
+			if(map.overlapsWithCallback(obj,function(o1,o2) {
+				var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
+				if(tile.index == _gthis.spikes_bot_id || tile.index == _gthis.spikes_left_id || tile.index == _gthis.spikes_right_id) {
+					return false;
+				}
+				return flixel_FlxObject.separate(o1,o2);
+			})) {
+				return true;
+			}
 		}
 		return false;
 	}
-	,collideWithDestructible: function(obj) {
-		if(this.destructibleTileLayer == null) {
+	,collideWithSpikes: function(obj) {
+		var _gthis = this;
+		if(this.groudTileLayer == null) {
 			return false;
 		}
 		var _g = 0;
-		var _g1 = this.destructibleTileLayer;
-		while(_g < _g1.length) {
-			var map = _g1[_g];
-			++_g;
-			return map.overlapsWithCallback(obj,flixel_FlxObject.separate);
-		}
-		return false;
-	}
-	,overlapsWithSpike: function(obj,spike_height) {
-		if(this.spikeTileLayer == null) {
-			return false;
-		}
-		var _g = 0;
-		var _g1 = this.spikeTileLayer;
+		var _g1 = this.groudTileLayer;
 		while(_g < _g1.length) {
 			var map = _g1[_g];
 			++_g;
 			if(map.overlapsWithCallback(obj,function(o1,o2) {
 				var tile = js_Boot.__cast(o1 , flixel_tile_FlxTile);
 				var obj = js_Boot.__cast(o2 , flixel_FlxSprite);
-				return tile.y - obj.y <= spike_height;
+				if(!(tile.index == _gthis.spikes_bot_id && tile.y - obj.y <= _gthis.spikes_height || tile.index == _gthis.spikes_left_id && obj.x - tile.x <= _gthis.spikes_height)) {
+					if(tile.index == _gthis.spikes_right_id) {
+						return tile.x - obj.x <= _gthis.spikes_height;
+					} else {
+						return false;
+					}
+				} else {
+					return true;
+				}
 			})) {
 				return true;
 			}
@@ -72737,7 +72764,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 42506;
+	this.version = 413332;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
