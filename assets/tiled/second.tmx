@@ -279,6 +279,6 @@
    <property name="tileset" value="simple_tileset_32"/>
   </properties>
   <object id="2" name="start" type="player_start" x="93.9394" y="1578.79"/>
-  <object id="3" name="exit" type="exit" x="1536" y="480" width="64" height="64"/>
+  <object id="3" name="exit" type="exit" x="1504" y="512" width="32" height="32"/>
  </objectgroup>
 </map>

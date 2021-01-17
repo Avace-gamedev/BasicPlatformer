@@ -5,15 +5,20 @@ import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.math.FlxPoint;
+import flixel.text.FlxText;
 import flixel.tile.FlxTile;
+import flixel.util.FlxColor;
 
 class PlayState extends FlxState
 {
 	var level:TiledLevel;
 
 	public var player:FlxSprite;
-	public var floor:FlxObject;
 	public var exit:FlxSprite;
+
+	var reset_text:FlxText;
+	var status:FlxText;
+	var status_bg:FlxSprite;
 
 	// jump buffering: if you press jump too early (by at most jump_buffering_delay seconds), you jump anyway once grounded
 	var last_jump_cmd:Float = -1;
@@ -88,6 +93,34 @@ class PlayState extends FlxState
 		add(level.imagesLayer);
 		add(level.objectsLayer);
 		add(level.foregroundTiles);
+
+		// UI
+
+		reset_text = new FlxText(level.tileWidth + 5, 0, 0, "R: reset", 16);
+		reset_text.scrollFactor.set(0, 0);
+		reset_text.borderColor = 0xff000000;
+		reset_text.borderStyle = SHADOW;
+		reset_text.alignment = LEFT;
+		add(reset_text);
+
+		status = new FlxText(0, 0, 0, "You WON!", 32);
+		status.scrollFactor.set(0, 0);
+		status.borderColor = 0xff000000;
+		status.borderStyle = SHADOW;
+		status.alignment = CENTER;
+		status.screenCenter();
+
+		status_bg = new FlxSprite();
+		status_bg.scrollFactor.set(0, 0);
+		status_bg.makeGraphic(Math.floor(status.width + 10), Math.floor(status.height + 10), FlxColor.fromRGBFloat(0, 0, 0, 0.7));
+		status_bg.x = status.x - 5;
+		status_bg.y = status.y - 5;
+
+		status.visible = false;
+		status_bg.visible = false;
+
+		add(status_bg);
+		add(status);
 	}
 
 	override public function update(elapsed:Float)
@@ -167,6 +200,9 @@ class PlayState extends FlxState
 			FlxG.resetState();
 		}
 
+		if (FlxG.keys.justPressed.R)
+			FlxG.resetState();
+
 		FlxG.overlap(exit, player, win);
 	}
 
@@ -187,7 +223,8 @@ class PlayState extends FlxState
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
 	{
-		trace("YOU WON");
+		status.visible = true;
+		status_bg.visible = true;
 		player.kill();
 	}
 }

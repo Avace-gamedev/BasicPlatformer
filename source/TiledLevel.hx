@@ -273,17 +273,13 @@ class TiledLevel extends TiledMap
 				state.player.y = y;
 				group.add(state.player);
 
-			case "floor":
-				var floor = new FlxObject(x, y, o.width, o.height);
-				state.floor = floor;
-
 			case "exit":
 				// Create the level exit
 				var exit = new FlxSprite(x, y);
 				exit.makeGraphic(32, 32, 0xff3f3f3f);
-				exit.exists = false;
 				state.exit = exit;
 				group.add(exit);
+				trace("exit added");
 		}
 	}
 
