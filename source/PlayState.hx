@@ -154,8 +154,13 @@ class PlayState extends FlxState
 
 		super.update(elapsed);
 
+		// collision with white tiles
 		level.collideWithGround(player);
 
+		// collision with blue tiles
+		level.collideWithDestructible(player);
+
+		// collision with red spikes
 		if (level.overlapsWithSpike(player, spike_height))
 		{
 			trace("DEAD");
@@ -182,6 +187,7 @@ class PlayState extends FlxState
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
 	{
+		trace("YOU WON");
 		player.kill();
 	}
 }

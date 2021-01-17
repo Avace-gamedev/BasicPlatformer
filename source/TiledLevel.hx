@@ -34,6 +34,7 @@ class TiledLevel extends TiledMap
 	public var backgroundLayer:FlxGroup;
 
 	var groudTileLayer:Array<FlxTilemap>;
+	var destructibleTileLayer:Array<FlxTilemap>;
 	var spikeTileLayer:Array<FlxTilemap>;
 
 	// Sprites of images layers
@@ -116,6 +117,55 @@ class TiledLevel extends TiledMap
 					if (spikeTileLayer == null)
 						spikeTileLayer = new Array<FlxTilemap>();
 					spikeTileLayer.push(tilemap);
+				}
+				else if (tileLayer.properties.contains("destructible"))
+				{
+					var destructible_tile_id_str:String = tileLayer.properties.get("destructible_id");
+
+					if (destructible_tile_id_str == null)
+						throw "'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.";
+
+					var destructible_tile_id = Std.parseInt(destructible_tile_id_str);
+
+					if (destructibleTileLayer == null)
+						destructibleTileLayer = new Array<FlxTilemap>();
+					destructibleTileLayer.push(tilemap);
+
+					tilemap.setTileProperties(destructible_tile_id + 1, FlxObject.ANY, function(o1, o2)
+					{
+						var tile:FlxTile = cast(o1, FlxTile);
+						tile.health -= 0.1;
+						if (tile.health <= 0.75)
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 2, true);
+						return true;
+					});
+
+					tilemap.setTileProperties(destructible_tile_id + 2, FlxObject.ANY, function(o1, o2)
+					{
+						var tile:FlxTile = cast(o1, FlxTile);
+						tile.health -= 0.1;
+						if (tile.health <= 0.5)
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 3, true);
+						return true;
+					});
+
+					tilemap.setTileProperties(destructible_tile_id + 3, FlxObject.ANY, function(o1, o2)
+					{
+						var tile:FlxTile = cast(o1, FlxTile);
+						tile.health -= 0.1;
+						if (tile.health <= 0.25)
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 4, true);
+						return true;
+					});
+
+					tilemap.setTileProperties(destructible_tile_id + 4, FlxObject.ANY, function(o1, o2)
+					{
+						var tile:FlxTile = cast(o1, FlxTile);
+						tile.health -= 0.1;
+						if (tile.health <= 0)
+							tile.tilemap.setTileByIndex(tile.mapIndex, 0, true);
+						return true;
+					});
 				}
 				else
 				{
@@ -250,20 +300,23 @@ class TiledLevel extends TiledMap
 		}
 	}
 
-	public function collideWithGround(obj:FlxObject, ?notifyCallback:FlxObject->FlxObject->Void, ?processCallback:FlxObject->FlxObject->Bool):Bool
+	public function collideWithGround(obj:FlxObject):Bool
 	{
 		if (groudTileLayer == null)
 			return false;
 
 		for (map in groudTileLayer)
-		{
-			// IMPORTANT: Always collide the map with objects, not the other way around.
-			//            This prevents odd collision errors (collision separation code off by 1 px).
-			if (FlxG.overlap(map, obj, notifyCallback, processCallback != null ? processCallback : FlxObject.separate))
-			{
-				return true;
-			}
-		}
+			return map.overlapsWithCallback(obj, FlxObject.separate);
+		return false;
+	}
+
+	public function collideWithDestructible(obj:FlxObject):Bool
+	{
+		if (destructibleTileLayer == null)
+			return false;
+
+		for (map in destructibleTileLayer)
+			return map.overlapsWithCallback(obj, FlxObject.separate);
 		return false;
 	}
 
