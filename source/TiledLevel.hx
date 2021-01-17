@@ -15,6 +15,7 @@ import flixel.addons.editors.tiled.TiledTileSet;
 import flixel.addons.tile.FlxTileSpecial;
 import flixel.addons.tile.FlxTilemapExt;
 import flixel.group.FlxGroup;
+import flixel.tile.FlxTile;
 import flixel.tile.FlxTilemap;
 import haxe.io.Path;
 
@@ -32,7 +33,8 @@ class TiledLevel extends TiledMap
 	public var objectsLayer:FlxGroup;
 	public var backgroundLayer:FlxGroup;
 
-	var collidableTileLayers:Array<FlxTilemap>;
+	var groudTileLayer:Array<FlxTilemap>;
+	var spikeTileLayer:Array<FlxTilemap>;
 
 	// Sprites of images layers
 	public var imagesLayer:FlxGroup;
@@ -107,11 +109,20 @@ class TiledLevel extends TiledMap
 			}
 			else
 			{
-				if (collidableTileLayers == null)
-					collidableTileLayers = new Array<FlxTilemap>();
-
 				foregroundTiles.add(tilemap);
-				collidableTileLayers.push(tilemap);
+
+				if (tileLayer.properties.contains("spikes"))
+				{
+					if (spikeTileLayer == null)
+						spikeTileLayer = new Array<FlxTilemap>();
+					spikeTileLayer.push(tilemap);
+				}
+				else
+				{
+					if (groudTileLayer == null)
+						groudTileLayer = new Array<FlxTilemap>();
+					groudTileLayer.push(tilemap);
+				}
 			}
 		}
 	}
@@ -239,12 +250,12 @@ class TiledLevel extends TiledMap
 		}
 	}
 
-	public function collideWithLevel(obj:FlxObject, ?notifyCallback:FlxObject->FlxObject->Void, ?processCallback:FlxObject->FlxObject->Bool):Bool
+	public function collideWithGround(obj:FlxObject, ?notifyCallback:FlxObject->FlxObject->Void, ?processCallback:FlxObject->FlxObject->Bool):Bool
 	{
-		if (collidableTileLayers == null)
+		if (groudTileLayer == null)
 			return false;
 
-		for (map in collidableTileLayers)
+		for (map in groudTileLayer)
 		{
 			// IMPORTANT: Always collide the map with objects, not the other way around.
 			//            This prevents odd collision errors (collision separation code off by 1 px).
@@ -252,6 +263,24 @@ class TiledLevel extends TiledMap
 			{
 				return true;
 			}
+		}
+		return false;
+	}
+
+	public function overlapsWithSpike(obj:FlxSprite, spike_height:Int)
+	{
+		if (spikeTileLayer == null)
+			return false;
+
+		for (map in spikeTileLayer)
+		{
+			if (map.overlapsWithCallback(obj, function(o1, o2)
+			{
+				var tile:FlxTile = cast(o1, FlxTile);
+				var obj:FlxSprite = cast(o2, FlxSprite);
+				return tile.y - obj.y <= spike_height;
+			}))
+				return true;
 		}
 		return false;
 	}
