@@ -183,7 +183,10 @@ class PlayState extends FlxState
 				last_jump_cmd = 0;
 
 		if (FlxG.keys.anyJustReleased([Z, UP, SPACE]) && player.velocity.y < 0)
+		{
 			player.velocity.y *= 0.5;
+			jump_timer = -1;
+		}
 
 		super.update(elapsed);
 
