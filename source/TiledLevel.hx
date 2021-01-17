@@ -37,6 +37,11 @@ class TiledLevel extends TiledMap
 	var destructibleTileLayer:Array<FlxTilemap>;
 	var spikeTileLayer:Array<FlxTilemap>;
 
+	var spikes_height:Int = 0;
+	var spikes_bot_id:Int = -1;
+	var spikes_left_id:Int = -1;
+	var spikes_right_id:Int = -1;
+
 	// Sprites of images layers
 	public var imagesLayer:FlxGroup;
 
@@ -112,53 +117,54 @@ class TiledLevel extends TiledMap
 			{
 				foregroundTiles.add(tilemap);
 
-				if (tileLayer.properties.contains("spikes"))
-				{
-					if (spikeTileLayer == null)
-						spikeTileLayer = new Array<FlxTilemap>();
-					spikeTileLayer.push(tilemap);
-				}
-				else if (tileLayer.properties.contains("destructible"))
-				{
-					var destructible_tile_id_str:String = tileLayer.properties.get("destructible_id");
+				// WHITE tiles
 
-					if (destructible_tile_id_str == null)
-						throw "'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.";
+				if (groudTileLayer == null)
+					groudTileLayer = new Array<FlxTilemap>();
+				groudTileLayer.push(tilemap);
 
-					var destructible_tile_id = Std.parseInt(destructible_tile_id_str);
+				// BLUE tiles
+
+				var destructible_id_str:String = tileLayer.properties.get("destructible_id");
+
+				if (destructible_id_str == null)
+					trace("'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
+				else
+				{
+					var destructible_id = Std.parseInt(destructible_id_str);
 
 					if (destructibleTileLayer == null)
 						destructibleTileLayer = new Array<FlxTilemap>();
 					destructibleTileLayer.push(tilemap);
 
-					tilemap.setTileProperties(destructible_tile_id + 1, FlxObject.ANY, function(o1, o2)
+					tilemap.setTileProperties(destructible_id + 1, FlxObject.ANY, function(o1, o2)
 					{
 						var tile:FlxTile = cast(o1, FlxTile);
 						tile.health -= 0.1;
 						if (tile.health <= 0.75)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 2, true);
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 2, true);
 						return true;
 					});
 
-					tilemap.setTileProperties(destructible_tile_id + 2, FlxObject.ANY, function(o1, o2)
+					tilemap.setTileProperties(destructible_id + 2, FlxObject.ANY, function(o1, o2)
 					{
 						var tile:FlxTile = cast(o1, FlxTile);
 						tile.health -= 0.1;
 						if (tile.health <= 0.5)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 3, true);
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 3, true);
 						return true;
 					});
 
-					tilemap.setTileProperties(destructible_tile_id + 3, FlxObject.ANY, function(o1, o2)
+					tilemap.setTileProperties(destructible_id + 3, FlxObject.ANY, function(o1, o2)
 					{
 						var tile:FlxTile = cast(o1, FlxTile);
 						tile.health -= 0.1;
 						if (tile.health <= 0.25)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_tile_id + 4, true);
+							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 4, true);
 						return true;
 					});
 
-					tilemap.setTileProperties(destructible_tile_id + 4, FlxObject.ANY, function(o1, o2)
+					tilemap.setTileProperties(destructible_id + 4, FlxObject.ANY, function(o1, o2)
 					{
 						var tile:FlxTile = cast(o1, FlxTile);
 						tile.health -= 0.1;
@@ -167,12 +173,36 @@ class TiledLevel extends TiledMap
 						return true;
 					});
 				}
+
+				// SPIKES
+
+				var spikes_height_str:String = tileLayer.properties.get("spikes_height");
+
+				if (spikes_height_str == null)
+					trace("'spikes_height' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
 				else
-				{
-					if (groudTileLayer == null)
-						groudTileLayer = new Array<FlxTilemap>();
-					groudTileLayer.push(tilemap);
-				}
+					spikes_height = Std.parseInt(spikes_height_str);
+
+				var spikes_bot_id_str:String = tileLayer.properties.get("spikes_bot_id");
+
+				if (spikes_bot_id_str == null)
+					trace("'spikes_bot_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
+				else
+					spikes_bot_id = Std.parseInt(spikes_bot_id_str) + 1;
+
+				var spikes_left_id_str:String = tileLayer.properties.get("spikes_left_id");
+
+				if (spikes_left_id_str == null)
+					trace("'spikes_left_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
+				else
+					spikes_left_id = Std.parseInt(spikes_left_id_str) + 1;
+
+				var spikes_right_id_str:String = tileLayer.properties.get("spikes_right_id");
+
+				if (spikes_right_id_str == null)
+					trace("'spikes_right_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
+				else
+					spikes_right_id = Std.parseInt(spikes_right_id_str) + 1;
 			}
 		}
 	}
@@ -279,7 +309,6 @@ class TiledLevel extends TiledMap
 				exit.makeGraphic(32, 32, 0xff3f3f3f);
 				state.exit = exit;
 				group.add(exit);
-				trace("exit added");
 		}
 	}
 
@@ -302,35 +331,36 @@ class TiledLevel extends TiledMap
 			return false;
 
 		for (map in groudTileLayer)
-			return map.overlapsWithCallback(obj, FlxObject.separate);
+			if (map.overlapsWithCallback(obj, function(o1, o2)
+			{
+				var tile:FlxTile = cast(o1, FlxTile);
+				if (tile.index == spikes_bot_id || tile.index == spikes_left_id || tile.index == spikes_right_id)
+					return false;
+
+				return FlxObject.separate(o1, o2);
+			}))
+				return true;
+
 		return false;
 	}
 
-	public function collideWithDestructible(obj:FlxObject):Bool
+	public function collideWithSpikes(obj:FlxObject):Bool
 	{
-		if (destructibleTileLayer == null)
+		if (groudTileLayer == null)
 			return false;
 
-		for (map in destructibleTileLayer)
-			return map.overlapsWithCallback(obj, FlxObject.separate);
-		return false;
-	}
-
-	public function overlapsWithSpike(obj:FlxSprite, spike_height:Int)
-	{
-		if (spikeTileLayer == null)
-			return false;
-
-		for (map in spikeTileLayer)
-		{
+		for (map in groudTileLayer)
 			if (map.overlapsWithCallback(obj, function(o1, o2)
 			{
 				var tile:FlxTile = cast(o1, FlxTile);
 				var obj:FlxSprite = cast(o2, FlxSprite);
-				return tile.y - obj.y <= spike_height;
+
+				return (tile.index == spikes_bot_id && tile.y - obj.y <= spikes_height)
+					|| (tile.index == spikes_left_id && obj.x - tile.x <= spikes_height)
+					|| (tile.index == spikes_right_id && tile.x - obj.x <= spikes_height);
 			}))
 				return true;
-		}
+
 		return false;
 	}
 }

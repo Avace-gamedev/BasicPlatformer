@@ -190,17 +190,8 @@ class PlayState extends FlxState
 		// collision with white tiles
 		level.collideWithGround(player);
 
-		// collision with blue tiles
-		level.collideWithDestructible(player);
-
 		// collision with red spikes
-		if (level.overlapsWithSpike(player, spike_height))
-		{
-			trace("DEAD");
-			FlxG.resetState();
-		}
-
-		if (FlxG.keys.justPressed.R)
+		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
 			FlxG.resetState();
 
 		FlxG.overlap(exit, player, win);
