@@ -136,10 +136,10 @@
 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
 </data>
  </layer>
- <layer id="6" name="falling" width="60" height="60">
+ <layer id="6" name="destructible" width="60" height="60">
   <properties>
-   <property name="falling" type="bool" value="true"/>
-   <property name="falling_id" type="int" value="4"/>
+   <property name="destructible" type="bool" value="true"/>
+   <property name="destructible_id" type="int" value="4"/>
    <property name="tileset" value="simple_tileset_32"/>
   </properties>
   <data encoding="csv">
