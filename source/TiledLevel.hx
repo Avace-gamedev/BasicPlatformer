@@ -347,10 +347,25 @@ class TiledLevel extends TiledMap
 				var tile:FlxTile = cast(o1, FlxTile);
 				var obj:FlxSprite = cast(o2, FlxSprite);
 
-				return (tile.index == spikes_bot_id && tile.y - obj.y <= spikes_height)
-					|| (tile.index == spikes_top_id && obj.y - tile.y <= spikes_height)
-					|| (tile.index == spikes_left_id && obj.x - tile.x <= spikes_height)
-					|| (tile.index == spikes_right_id && tile.x - obj.x <= spikes_height);
+				// we check that the character touches the spikes by taking into account its actual hitbox (width and height),
+				// and we add a little 1 px bias along the secondary axis e.g. the character can stand on a left spike without dying
+				// this makes it easier to drop down from boxes in this situation:
+				// where C is the character going left, and < is a spike tile.
+				//            _C_
+				//          <|
+				//           |
+				//           |
+
+				return (tile.index == spikes_bot_id && tile.y - obj.y <= spikes_height && Math.abs(obj.x - tile.x) < obj.height - 1)
+					|| (tile.index == spikes_top_id
+						&& obj.y + (32 - obj.height) - tile.y <= spikes_height
+						&& Math.abs(obj.x - tile.x) < obj.height - 1)
+					|| (tile.index == spikes_left_id
+						&& obj.x + ((32 - obj.width) / 2) - tile.x <= spikes_height
+						&& Math.abs(obj.y - tile.y) < obj.height - 1)
+					|| (tile.index == spikes_right_id
+						&& (tile.x + tile.width) - (obj.x + obj.width + ((32 - obj.width) / 2)) <= spikes_height
+							&& Math.abs(obj.y - tile.y) < obj.height - 1);
 			}))
 				return true;
 
