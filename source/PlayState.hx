@@ -92,6 +92,9 @@ class PlayState extends FlxState
 		player.acceleration.y = 1000;
 		FlxG.camera.follow(player);
 
+		exit = new FlxSprite(0, 0);
+		exit.makeGraphic(32, 32, 0xff00ff00);
+
 		level = new TiledLevel(AssetPaths.second__tmx, this);
 		add(level.backgroundLayer);
 		add(level.imagesLayer);
