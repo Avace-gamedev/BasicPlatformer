@@ -77,12 +77,16 @@ class PlayState extends FlxState
 		air_drag = max_velocity_x;
 		moving_drag = max_velocity_x * 2;
 		stoping_drag = max_velocity_x * 100;
-		// turning_drag = max_velocity_x * 200;
+		turning_drag = max_velocity_x * 500;
 
 		// END CONFIG
 
 		player = new FlxSprite(0, 0);
-		player.makeGraphic(32, 32, 0xffaa1111);
+		player.loadGraphic(AssetPaths.character__png, true, 32, 32);
+		player.animation.add("stand", [0, 1], 2, true);
+		player.animation.add("jump", [5, 6, 7, 8, 9], 10, false);
+		player.animation.add("landing", [6, 5], 10, false);
+		player.animation.play("stand");
 		player.maxVelocity.x = max_velocity_x;
 		player.maxVelocity.y = max_velocity_y;
 		player.acceleration.y = 1000;
@@ -128,35 +132,18 @@ class PlayState extends FlxState
 		player.acceleration.x = 0;
 		player.acceleration.y = 2000; // gravity
 
-		// HORIZONTAL MOVEMENT
-		if (FlxG.keys.anyPressed([LEFT, Q]))
-		{
-			// if (player.velocity.x > 0)
-			// 	player.drag.x = turning_drag;
-
-			if (player.isTouching(FlxObject.FLOOR))
-				player.acceleration.x -= ground_acceleration;
-			else
-				player.acceleration.x -= air_acceleration;
-		}
-
-		if (FlxG.keys.anyPressed([RIGHT, D]))
-		{
-			// if (player.velocity.x < 0)
-			// 	player.drag.x = turning_drag;
-
-			if (player.isTouching(FlxObject.FLOOR))
-				player.acceleration.x += ground_acceleration;
-			else
-				player.acceleration.x += air_acceleration;
-		}
-
 		// VERTICAL MOVEMENT
 		if (player.isTouching(FlxObject.FLOOR))
 		{
 			if (last_floored_timer > 0) // player was in the air before
+			{
+				player.animation.play("landing");
 				if (last_jump_cmd >= 0 && last_jump_cmd < jump_buffering_delay) // and they pressed jump button a little bit early
 					jump(elapsed);
+			}
+
+			if (player.animation.finished)
+				player.animation.play("stand");
 
 			last_floored_timer = 0;
 			jump_timer = -1;
@@ -188,6 +175,29 @@ class PlayState extends FlxState
 			jump_timer = -1;
 		}
 
+		// HORIZONTAL MOVEMENT
+		if (FlxG.keys.anyPressed([LEFT, Q]))
+		{
+			if (player.velocity.x > 0)
+				player.drag.x = turning_drag;
+
+			if (player.isTouching(FlxObject.FLOOR))
+				player.acceleration.x -= ground_acceleration;
+			else
+				player.acceleration.x -= air_acceleration;
+		}
+
+		if (FlxG.keys.anyPressed([RIGHT, D]))
+		{
+			if (player.velocity.x < 0)
+				player.drag.x = turning_drag;
+
+			if (player.isTouching(FlxObject.FLOOR))
+				player.acceleration.x += ground_acceleration;
+			else
+				player.acceleration.x += air_acceleration;
+		}
+
 		super.update(elapsed);
 
 		// collision with white tiles
@@ -206,6 +216,7 @@ class PlayState extends FlxState
 		{
 			player.velocity.y = 0;
 			jump_timer = 0;
+			player.animation.play("jump");
 		}
 		else
 			jump_timer += elapsed;
