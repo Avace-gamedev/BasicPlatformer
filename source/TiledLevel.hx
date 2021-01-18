@@ -17,6 +17,7 @@ import flixel.addons.tile.FlxTilemapExt;
 import flixel.group.FlxGroup;
 import flixel.tile.FlxTile;
 import flixel.tile.FlxTilemap;
+import flixel.util.FlxColor;
 import haxe.io.Path;
 
 /**
@@ -288,6 +289,14 @@ class TiledLevel extends TiledMap
 				state.player.y = y;
 				group.add(state.player);
 
+			case "checkpoint":
+				var checkpoint_sprite = new FlxSprite();
+				checkpoint_sprite.makeGraphic(o.width, o.height, FlxColor.fromRGBFloat(1, 1, 1, 0.2));
+				checkpoint_sprite.x = x;
+				checkpoint_sprite.y = y;
+				group.add(checkpoint_sprite);
+				state.checkpoints.push(checkpoint_sprite);
+
 			case "exit":
 				state.exit.x = x;
 				state.exit.y = y;
@@ -317,7 +326,7 @@ class TiledLevel extends TiledMap
 			if (map.overlapsWithCallback(obj, function(o1, o2)
 			{
 				var tile:FlxTile = cast(o1, FlxTile);
-				if (tile.index == spikes_bot_id || tile.index == spikes_left_id || tile.index == spikes_right_id)
+				if (tile.index == spikes_bot_id || tile.index == spikes_left_id || tile.index == spikes_right_id || tile.index == spikes_top_id)
 					return false;
 
 				return FlxObject.separate(o1, o2);

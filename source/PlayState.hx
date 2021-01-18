@@ -18,6 +18,8 @@ class PlayState extends FlxState
 
 	public var player:FlxSprite;
 	public var exit:FlxSprite;
+	public var checkpoint_i:Int;
+	public var checkpoints:Array<FlxSprite> = [];
 
 	var move_text:FlxText;
 	var jump_text:FlxText;
@@ -53,12 +55,13 @@ class PlayState extends FlxState
 	var stoping_drag:Float;
 	var turning_drag:Float;
 
-	override public function new(area_i:Int = 0, level_i:Int = 0)
+	override public function new(area_i:Int = 0, level_i:Int = 0, checkpoint_i = -1)
 	{
 		super();
 
 		this.area_i = area_i;
 		this.level_i = level_i;
+		this.checkpoint_i = checkpoint_i;
 	}
 
 	override public function create()
@@ -114,7 +117,7 @@ class PlayState extends FlxState
 
 		// UI
 
-		var ctrl_panel = new ControlPanel([["← →", "move"], ["↑", "jump"], ["R", "reset"]], new FlxPoint(level.tileWidth, level.tileHeight), 16,
+		var ctrl_panel = new ControlPanel([["← →", "move"], ["↑", "jump"], ["R", "reset"]], new FlxPoint(level.tileWidth, 0), 16,
 			FlxColor.fromInt(0xFF444444));
 		add(ctrl_panel);
 
@@ -142,6 +145,20 @@ class PlayState extends FlxState
 
 		add(status_bg);
 		add(status);
+
+		// CHECKPOINT
+
+		if (checkpoint_i >= 0)
+		{
+			player.x = checkpoints[checkpoint_i].x + checkpoints[checkpoint_i].width / 2;
+			player.y = checkpoints[checkpoint_i].y + checkpoints[checkpoint_i].height / 2;
+		}
+
+		for (i in 0...checkpoint_i)
+		{
+			checkpoints[i].active = false;
+			checkpoints[i].visible = false;
+		}
 	}
 
 	override public function update(elapsed:Float)
@@ -223,9 +240,18 @@ class PlayState extends FlxState
 
 		// collision with red spikes
 		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
-			FlxG.switchState(new PlayState(area_i, level_i));
+			resetLevel();
 
 		FlxG.overlap(exit, player, win);
+
+		for (i in 0...checkpoints.length)
+			if (checkpoints[i].active)
+				FlxG.overlap(checkpoints[i], player, function(_, _)
+				{
+					checkpoints[i].active = false;
+					checkpoints[i].visible = false;
+					checkpoint_i = i;
+				});
 	}
 
 	function jump(elapsed:Float)
@@ -242,6 +268,11 @@ class PlayState extends FlxState
 		player.velocity.y -= jump_velocity;
 		last_floored_timer = 2 * ledge_assist_delay; // no double jumps
 		last_jump_cmd = -1; // reset jump_cmd timer
+	}
+
+	public function resetLevel()
+	{
+		FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i));
 	}
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
