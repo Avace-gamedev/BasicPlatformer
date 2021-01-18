@@ -11,12 +11,18 @@ import flixel.util.FlxColor;
 
 class PlayState extends FlxState
 {
+	var area_i:Int;
+	var level_i:Int;
+
 	var level:TiledLevel;
 
 	public var player:FlxSprite;
 	public var exit:FlxSprite;
 
+	var move_text:FlxText;
+	var jump_text:FlxText;
 	var reset_text:FlxText;
+	var level_text:FlxText;
 	var status:FlxText;
 	var status_bg:FlxSprite;
 
@@ -47,18 +53,23 @@ class PlayState extends FlxState
 	var stoping_drag:Float;
 	var turning_drag:Float;
 
-	override public function new()
+	override public function new(area_i:Int = 0, level_i:Int = 0)
 	{
 		super();
+
+		this.area_i = area_i;
+		this.level_i = level_i;
 	}
 
 	override public function create()
 	{
 		FlxG.mouse.visible = false;
 		FlxG.autoPause = false;
-		FlxG.camera.bgColor = 0xFF4169E1;
+		FlxG.camera.bgColor = 0xFFFFFFFF;
 
 		super.create();
+
+		Content.load();
 
 		// CONFIG
 
@@ -75,7 +86,7 @@ class PlayState extends FlxState
 		air_acceleration = max_velocity_x * 2;
 
 		air_drag = max_velocity_x;
-		moving_drag = max_velocity_x * 2;
+		moving_drag = max_velocity_x;
 		stoping_drag = max_velocity_x * 100;
 		turning_drag = max_velocity_x * 500;
 
@@ -95,7 +106,7 @@ class PlayState extends FlxState
 		exit = new FlxSprite(0, 0);
 		exit.makeGraphic(32, 32, 0xff00ff00);
 
-		level = new TiledLevel(AssetPaths.second__tmx, this);
+		level = new TiledLevel(Content.areas[area_i][level_i], this);
 		add(level.backgroundLayer);
 		add(level.imagesLayer);
 		add(level.objectsLayer);
@@ -103,17 +114,20 @@ class PlayState extends FlxState
 
 		// UI
 
-		reset_text = new FlxText(level.tileWidth + 5, 0, 0, "R: reset", 16);
-		reset_text.scrollFactor.set(0, 0);
-		reset_text.borderColor = 0xff000000;
-		reset_text.borderStyle = SHADOW;
-		reset_text.alignment = LEFT;
-		add(reset_text);
+		var ctrl_panel = new ControlPanel([["← →", "move"], ["↑", "jump"], ["R", "reset"]], new FlxPoint(level.tileWidth, level.tileHeight), 16,
+			FlxColor.fromInt(0xFF444444));
+		add(ctrl_panel);
+
+		level_text = new FlxText(0, 0, 0, 'Area $area_i - Level $level_i', 16);
+		level_text.x = FlxG.camera.width - level.tileWidth - level_text.width;
+		level_text.scrollFactor.set(0, 0);
+		level_text.setFormat(null, 16, FlxColor.fromInt(0xFF444444));
+		level_text.alignment = RIGHT;
+		add(level_text);
 
 		status = new FlxText(0, 0, 0, "You WON!", 32);
 		status.scrollFactor.set(0, 0);
 		status.borderColor = 0xff000000;
-		status.borderStyle = SHADOW;
 		status.alignment = CENTER;
 		status.screenCenter();
 
@@ -202,13 +216,14 @@ class PlayState extends FlxState
 		}
 
 		super.update(elapsed);
+		level.update(elapsed);
 
 		// collision with white tiles
 		level.collideWithGround(player);
 
 		// collision with red spikes
 		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
-			FlxG.resetState();
+			FlxG.switchState(new PlayState(area_i, level_i));
 
 		FlxG.overlap(exit, player, win);
 	}
@@ -231,8 +246,16 @@ class PlayState extends FlxState
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
 	{
-		status.visible = true;
-		status_bg.visible = true;
 		player.kill();
+
+		if (level_i + 1 < Content.areas[area_i].length)
+			FlxG.switchState(new PlayState(area_i, level_i + 1));
+		else if (area_i + 1 < Content.areas.length)
+			FlxG.switchState(new PlayState(area_i + 1, 0));
+		else
+		{
+			status.visible = true;
+			status_bg.visible = true;
+		}
 	}
 }

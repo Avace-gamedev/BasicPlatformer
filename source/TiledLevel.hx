@@ -39,8 +39,15 @@ class TiledLevel extends TiledMap
 
 	var spikes_height:Int = 0;
 	var spikes_bot_id:Int = -1;
+	var spikes_top_id:Int = -1;
 	var spikes_left_id:Int = -1;
 	var spikes_right_id:Int = -1;
+
+	public var destructible_tile_delay = 0.5;
+
+	var destructible_id:Int;
+	var destructible_timer:Float = 0;
+	var to_destroy:Array<{tilemap:FlxTilemap, id:Int, time:Float}> = [];
 
 	// Sprites of images layers
 	public var imagesLayer:FlxGroup;
@@ -54,7 +61,7 @@ class TiledLevel extends TiledMap
 		objectsLayer = new FlxGroup();
 		backgroundLayer = new FlxGroup();
 
-		FlxG.camera.setScrollBoundsRect(tileWidth, tileHeight, fullWidth - tileWidth, fullHeight - tileHeight, true);
+		FlxG.camera.setScrollBoundsRect(0, 0, fullWidth, fullHeight, true);
 
 		loadImages();
 		loadObjects(state);
@@ -131,47 +138,18 @@ class TiledLevel extends TiledMap
 					trace("'destructible_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
 				else
 				{
-					var destructible_id = Std.parseInt(destructible_id_str);
+					destructible_id = Std.parseInt(destructible_id_str);
 
 					if (destructibleTileLayer == null)
 						destructibleTileLayer = new Array<FlxTilemap>();
 					destructibleTileLayer.push(tilemap);
 
-					tilemap.setTileProperties(destructible_id + 1, FlxObject.ANY, function(o1, o2)
+					tilemap.setTileProperties(destructible_id + 1, FlxObject.CEILING, function(o1, o2)
 					{
 						var tile:FlxTile = cast(o1, FlxTile);
-						tile.health -= 0.1;
-						if (tile.health <= 0.75)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 2, true);
-						return true;
-					});
-
-					tilemap.setTileProperties(destructible_id + 2, FlxObject.ANY, function(o1, o2)
-					{
-						var tile:FlxTile = cast(o1, FlxTile);
-						tile.health -= 0.1;
-						if (tile.health <= 0.5)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 3, true);
-						return true;
-					});
-
-					tilemap.setTileProperties(destructible_id + 3, FlxObject.ANY, function(o1, o2)
-					{
-						var tile:FlxTile = cast(o1, FlxTile);
-						tile.health -= 0.1;
-						if (tile.health <= 0.25)
-							tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 4, true);
-						return true;
-					});
-
-					tilemap.setTileProperties(destructible_id + 4, FlxObject.ANY, function(o1, o2)
-					{
-						var tile:FlxTile = cast(o1, FlxTile);
-						tile.health -= 0.1;
-						if (tile.health <= 0)
-							tile.tilemap.setTileByIndex(tile.mapIndex, 0, true);
-						return true;
-					});
+						tile.tilemap.setTileByIndex(tile.mapIndex, destructible_id + 2, true);
+						to_destroy.push({tilemap: tile.tilemap, id: tile.mapIndex, time: destructible_timer + destructible_tile_delay});
+					}, null, 1);
 				}
 
 				// SPIKES
@@ -189,6 +167,13 @@ class TiledLevel extends TiledMap
 					trace("'spikes_bot_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
 				else
 					spikes_bot_id = Std.parseInt(spikes_bot_id_str) + 1;
+
+				var spikes_top_id_str:String = tileLayer.properties.get("spikes_top_id");
+
+				if (spikes_top_id_str == null)
+					trace("'spikes_top_id' property not defined for the '" + tileLayer.name + "' layer. Please add the property to the layer.");
+				else
+					spikes_top_id = Std.parseInt(spikes_top_id_str) + 1;
 
 				var spikes_left_id_str:String = tileLayer.properties.get("spikes_left_id");
 
@@ -354,11 +339,22 @@ class TiledLevel extends TiledMap
 				var obj:FlxSprite = cast(o2, FlxSprite);
 
 				return (tile.index == spikes_bot_id && tile.y - obj.y <= spikes_height)
+					|| (tile.index == spikes_top_id && obj.y - tile.y <= spikes_height)
 					|| (tile.index == spikes_left_id && obj.x - tile.x <= spikes_height)
 					|| (tile.index == spikes_right_id && tile.x - obj.x <= spikes_height);
 			}))
 				return true;
 
 		return false;
+	}
+
+	public function update(elapsed:Float)
+	{
+		destructible_timer += elapsed;
+		while (to_destroy.length > 0 && to_destroy[0].time <= destructible_timer)
+		{
+			to_destroy[0].tilemap.setTileByIndex(to_destroy[0].id, 0, true);
+			to_destroy.shift();
+		}
 	}
 }
