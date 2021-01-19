@@ -70,12 +70,18 @@ class PlayState extends FlxState
 
 		// UI
 
-		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"]];
+		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"], ["Esc", "Menu"]];
 
 		if (area_i > 0 || level_i >= 5)
 		{
 			player.double_jump_unlocked = true;
-			controls = [["← →", "move"], ["↑", "jump"], ["↑ ↑", "double jump"], ["R", "reset"]];
+			controls = [
+				["← →", "move"],
+				["↑", "jump"],
+				["↑ ↑", "double jump"],
+				["R", "reset"],
+				["Esc", "Menu"],
+			];
 		}
 
 		if (area_i == 0 && level_i == 5 && checkpoint_i == -1)
@@ -86,7 +92,7 @@ class PlayState extends FlxState
 			haxe.Timer.delay(function() text.visible = false, 2000);
 		}
 
-		var ctrl_panel = new Control(controls, new FlxPoint(level.tileWidth, 0), 16, FlxColor.fromInt(0xFF444444));
+		var ctrl_panel = new Control(controls, new FlxPoint(level.tileWidth * 1.5, 0), 16, FlxColor.fromInt(0xFF444444));
 		add(ctrl_panel);
 
 		var level_text = new Info(area_i, level_i);
@@ -122,9 +128,10 @@ class PlayState extends FlxState
 
 		// collision with red spikes
 		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
-		{
 			FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i, Content.sound_damage));
-		}
+
+		if (FlxG.keys.justPressed.ESCAPE)
+			FlxG.switchState(new MenuState());
 
 		// win condition
 		FlxG.overlap(exit, player, win);
