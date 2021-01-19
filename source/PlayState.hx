@@ -8,6 +8,7 @@ import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.math.FlxPoint;
+import flixel.system.FlxSound;
 import flixel.text.FlxText;
 import flixel.tile.FlxTile;
 import flixel.util.FlxColor;
@@ -16,25 +17,27 @@ class PlayState extends FlxState
 {
 	var area_i:Int;
 	var level_i:Int;
+	var checkpoint_i:Int;
+	var sound:FlxSound;
 
 	var level:TiledLevel;
 
 	public var player:Character;
 	public var exit:FlxSprite;
-	public var checkpoint_i:Int;
 	public var checkpoints:Array<FlxSprite> = [];
 
 	var status:EndGame;
 
 	var spike_height:Int = 5; // in pixels, this is used to check if there is an actual overlap with the spikes
 
-	override public function new(area_i:Int = 0, level_i:Int = 0, checkpoint_i = -1)
+	override public function new(area_i:Int = 0, level_i:Int = 0, checkpoint_i = -1, sound:FlxSound = null)
 	{
 		super();
 
 		this.area_i = area_i;
 		this.level_i = level_i;
 		this.checkpoint_i = checkpoint_i;
+		this.sound = sound;
 	}
 
 	override public function create()
@@ -47,9 +50,14 @@ class PlayState extends FlxState
 
 		Content.load();
 
+		if (sound != null)
+			sound.play();
+
 		// END CONFIG
 
 		player = new Character();
+		if (area_i > 0 || level_i >= 5)
+			player.double_jump_unlocked = true;
 		FlxG.camera.follow(player);
 
 		exit = new FlxSprite(0, 0);
@@ -64,7 +72,18 @@ class PlayState extends FlxState
 
 		// UI
 
-		var ctrl_panel = new Control([["← →", "move"], ["↑", "jump"], ["R", "reset"]], new FlxPoint(level.tileWidth, 0), 16, FlxColor.fromInt(0xFF444444));
+		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"]];
+
+		if (area_i == 0 && level_i == 5)
+		{
+			var text = new FlxText(0, 0, 0, "Unlocked: Double Jump", 64);
+			text.screenCenter();
+			add(text);
+			haxe.Timer.delay(function() text.visible = false, 2000);
+			controls = [["← →", "move"], ["↑", "jump"], ["↑ ↑", "double jump"], ["R", "reset"]];
+		}
+
+		var ctrl_panel = new Control(controls, new FlxPoint(level.tileWidth, 0), 16, FlxColor.fromInt(0xFF444444));
 		add(ctrl_panel);
 
 		var level_text = new Info(area_i, level_i);
@@ -83,7 +102,7 @@ class PlayState extends FlxState
 			player.y = checkpoints[checkpoint_i].y + checkpoints[checkpoint_i].height / 2;
 		}
 
-		for (i in 0...checkpoint_i)
+		for (i in 0...(checkpoint_i + 1))
 		{
 			checkpoints[i].active = false;
 			checkpoints[i].visible = false;
@@ -100,7 +119,9 @@ class PlayState extends FlxState
 
 		// collision with red spikes
 		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
-			resetLevel();
+		{
+			FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i, Content.sound_damage));
+		}
 
 		// win condition
 		FlxG.overlap(exit, player, win);
@@ -110,15 +131,11 @@ class PlayState extends FlxState
 			if (checkpoints[i].active)
 				FlxG.overlap(checkpoints[i], player, function(_, _)
 				{
+					Content.sound_checkpoint.play();
 					checkpoints[i].active = false;
 					checkpoints[i].visible = false;
 					checkpoint_i = i;
 				});
-	}
-
-	public function resetLevel()
-	{
-		FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i));
 	}
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
@@ -126,10 +143,13 @@ class PlayState extends FlxState
 		player.kill();
 
 		if (level_i + 1 < Content.areas[area_i].length)
-			FlxG.switchState(new PlayState(area_i, level_i + 1));
+			FlxG.switchState(new PlayState(area_i, level_i + 1, -1, Content.sound_exit));
 		else if (area_i + 1 < Content.areas.length)
-			FlxG.switchState(new PlayState(area_i + 1, 0));
+			FlxG.switchState(new PlayState(area_i + 1, 0, -1, Content.sound_exit));
 		else
+		{
 			status.visible = true;
+			Content.sound_exit.play();
+		}
 	}
 }

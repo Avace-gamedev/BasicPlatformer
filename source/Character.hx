@@ -23,6 +23,10 @@ class Character extends FlxSprite
 	var jump_btn_released:Bool = true;
 	var can_jump(get, never):Bool;
 
+	public var double_jump_unlocked = false;
+
+	var double_jump = false;
+
 	var max_velocity_y = 600;
 	var jump_velocity:Float;
 
@@ -76,8 +80,8 @@ class Character extends FlxSprite
 		// OR player is hitting jump and is a little bit too late after leaving ground
 		return (isTouching(FlxObject.FLOOR) && (last_floored_timer > 0 || (last_jump_cmd >= 0 && last_jump_cmd < jump_buffering_delay)))
 			|| (jump_timer >= 0 && jump_timer < jump_higher_delay)
-			|| (jump_btn_released && FlxG.keys.anyPressed([Z, UP, SPACE]) && (isTouching(FlxObject.FLOOR) // on floor
-				|| wall_stick_timer >= 0 // stuck on a wall
+			|| (jump_btn_released && FlxG.keys.anyPressed([Z, UP, SPACE]) && ((isTouching(FlxObject.FLOOR) // on floor
+				|| (double_jump_unlocked && !double_jump)) || wall_stick_timer >= 0 // stuck on a wall
 				|| last_floored_timer < ledge_assist_delay // little late
 			));
 	}
@@ -98,11 +102,18 @@ class Character extends FlxSprite
 
 		if (isTouching(FlxObject.FLOOR))
 		{
+			if (last_floored_timer > 0) // was in the air before
+			{
+				Content.sound_land.play();
+				animation.play("landing");
+			}
+
 			if (animation.finished || wall_stick_timer >= 0)
 				animation.play("stand");
 
 			last_floored_timer = 0;
 			jump_timer = -1;
+			double_jump = false;
 
 			drag.x = stoping_drag;
 
@@ -129,6 +140,7 @@ class Character extends FlxSprite
 			}
 			acceleration.y -= 1800;
 			maxVelocity.y = max_velocity_y / 10;
+			double_jump = false;
 
 			if (velocity.y < 0)
 				velocity.y = 0;
@@ -156,7 +168,6 @@ class Character extends FlxSprite
 
 		// HORIZONTAL MOVEMENT
 		// don't take into account if stuck to wall
-		trace(wall_stick_timer);
 		if (wall_stick_timer < 0 || wall_stick_timer > wall_stick_delay)
 		{
 			if (FlxG.keys.anyPressed([LEFT, Q]))
@@ -192,6 +203,10 @@ class Character extends FlxSprite
 			velocity.y = 0;
 			jump_timer = 0;
 			animation.play("jump");
+			Content.sound_jump.play();
+
+			if (!isTouching(FlxObject.FLOOR) && wall_stick_timer < 0)
+				double_jump = true;
 
 			if (wall_stick_timer >= 0) // wall jump to right
 			{
@@ -211,7 +226,7 @@ class Character extends FlxSprite
 			if (wall_stick_timer < 0)
 			{
 				jump_timer += elapsed;
-				velocity.y -= jump_velocity; // after initial impulse, always jump up
+				velocity.y -= jump_velocity;
 			}
 			else
 				jump_timer = -1;
