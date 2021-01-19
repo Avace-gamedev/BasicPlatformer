@@ -33,7 +33,7 @@ class PlayState extends FlxState
 		super();
 
 		this.area_i = area_i;
-		this.level_i = 1;
+		this.level_i = level_i;
 		this.checkpoint_i = checkpoint_i;
 	}
 

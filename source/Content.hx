@@ -12,7 +12,8 @@ class Content
 			AssetPaths.Area_0_Level_0__tmx,
 			AssetPaths.Area_0_Level_1__tmx,
 			AssetPaths.Area_0_Level_2__tmx,
-			AssetPaths.Area_0_Level_3__tmx
+			AssetPaths.Area_0_Level_3__tmx,
+			AssetPaths.Area_0_Level_4__tmx,
 		];
 
 		areas = [area0];
