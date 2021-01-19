@@ -9,7 +9,7 @@ class MenuState extends FlxUIState
 	{
 		FlxG.autoPause = false;
 		FlxG.mouse.visible = true;
-		FlxG.camera.bgColor = 0xFF000000;
+		FlxG.camera.bgColor = 0xFFFFFFFF;
 		_xml_id = "menu";
 		super.create();
 	}

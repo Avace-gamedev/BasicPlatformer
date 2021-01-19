@@ -2,7 +2,7 @@
 <data>
     <include name="common"/>
 
-    <text name="title" center_x="true" y="50pt" width="screen.width" align="center" size="40pt" text="BasicPlatformer">
+    <text name="title" center_x="true" y="50pt" width="screen.width" align="center" size="40pt" text="BasicPlatformer" color="0xff4169e1">
     </text>
 
     <button name="level_0_0" center_y="true" label="0" height="30pt">
@@ -48,7 +48,7 @@
     </align>
 
     <align axis="vertical" spacing="30pt">
-        <bounds top="300pt" bottom = "550pt" />
+        <bounds top="500pt" bottom = "550pt" />
         <objects value="level_0_0" />
         <objects value="level_0_1" />
         <objects value="level_0_2" />
@@ -57,7 +57,18 @@
         <objects value="level_0_5" />
     </align>
 
-    <text name="area0" size="20pt" width="500pt" text="Area 0">
+    <button name="play_btn" center_x="true" center_y="true" label="Play" width="100pt" height="50pt">
+        <param type="string" value="play" />
+        <param type="int" value="0" />
+        <param type="int" value="0" />
+        <text size="35pt" />
+    </button>
+    <text name="play_text" size="10pt" width="screen.width" align="center" text="Level 0" color="0xff4169e1">
+        <anchor y="play_btn.bottom" y-flush="top" />
+    </text>
+
+
+    <text name="area0" size="20pt" width="500pt" text="Select level:" color="0xff4169e1">
         <anchor x="level_0_0.left" y="level_0_0.top" x-flush="left" y-flush="bottom" />
     </text>
 </data>
