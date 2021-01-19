@@ -56,8 +56,6 @@ class PlayState extends FlxState
 		// END CONFIG
 
 		player = new Character();
-		if (area_i > 0 || level_i >= 5)
-			player.double_jump_unlocked = true;
 		FlxG.camera.follow(player);
 
 		exit = new FlxSprite(0, 0);
@@ -74,13 +72,18 @@ class PlayState extends FlxState
 
 		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"]];
 
-		if (area_i == 0 && level_i == 5)
+		if (area_i > 0 || level_i >= 5)
 		{
-			var text = new FlxText(0, 0, 0, "Unlocked: Double Jump", 64);
-			text.screenCenter();
+			player.double_jump_unlocked = true;
+			controls = [["← →", "move"], ["↑", "jump"], ["↑ ↑", "double jump"], ["R", "reset"]];
+		}
+
+		if (area_i == 0 && level_i == 5 && checkpoint_i == -1)
+		{
+			var text = new FlxText(level.tileWidth, 28 * level.tileHeight, 27 * level.tileWidth, "Unlocked: Double Jump", 48);
+			text.alignment = CENTER;
 			add(text);
 			haxe.Timer.delay(function() text.visible = false, 2000);
-			controls = [["← →", "move"], ["↑", "jump"], ["↑ ↑", "double jump"], ["R", "reset"]];
 		}
 
 		var ctrl_panel = new Control(controls, new FlxPoint(level.tileWidth, 0), 16, FlxColor.fromInt(0xFF444444));
