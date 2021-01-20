@@ -5,7 +5,7 @@ import flixel.math.FlxPoint;
 import flixel.text.FlxText;
 import flixel.util.FlxColor;
 
-class Control extends FlxTypedGroup<FlxText>
+class ControlPanel extends FlxTypedGroup<FlxText>
 {
 	override public function new(controls:Array<Array<String>>, offset:FlxPoint, font_size:Int, text_color:FlxColor)
 	{
@@ -36,7 +36,7 @@ class Control extends FlxTypedGroup<FlxText>
 	}
 }
 
-class Info extends FlxText
+class InfoPanel extends FlxText
 {
 	override public function new(area_i:Int, level_i:Int)
 	{
@@ -47,7 +47,7 @@ class Info extends FlxText
 	}
 }
 
-class EndGame extends FlxTypedGroup<FlxSprite>
+class EndGamePanel extends FlxTypedGroup<FlxSprite>
 {
 	override public function new()
 	{

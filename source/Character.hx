@@ -1,3 +1,5 @@
+import Controller.Control;
+import Controller.KeyboardController;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
@@ -58,7 +60,7 @@ class Character extends FlxSprite
 		wall_drag = maxVelocity.y * 5000;
 	}
 
-	override public function update(elapsed:Float)
+	public function doUpdate(elapsed:Float, control:Control)
 	{
 		acceleration.x = 0;
 		acceleration.y = 2000; // gravity
@@ -66,7 +68,7 @@ class Character extends FlxSprite
 
 		var init = state_machine.init;
 
-		state_machine.update(elapsed);
+		state_machine.update(elapsed, control);
 
 		switch (state_machine.state)
 		{
@@ -123,7 +125,7 @@ class Character extends FlxSprite
 		{
 			case WALL(_):
 			default:
-				if (FlxG.keys.anyPressed([LEFT, Q]))
+				if (control.left)
 				{
 					if (velocity.x > 0)
 						drag.x = turning_drag;
@@ -132,7 +134,7 @@ class Character extends FlxSprite
 					else
 						acceleration.x -= air_acceleration;
 				}
-				if (FlxG.keys.anyPressed([RIGHT, D]))
+				if (control.right)
 				{
 					if (velocity.x < 0)
 						drag.x = turning_drag;
@@ -142,8 +144,6 @@ class Character extends FlxSprite
 						acceleration.x += air_acceleration;
 				}
 		}
-
-		super.update(elapsed);
 	}
 
 	public function jump(elapsed:Float, wall:Bool = false, wall_left:Bool = false)
@@ -193,6 +193,7 @@ class StateMachine
 		init: true,
 		last_state: AIR(1),
 		did_jump: false,
+		pre_jump: false,
 	};
 
 	public var state(default, null):MachineState;
@@ -248,11 +249,11 @@ class StateMachine
 	 * 		- land_from_wall: WALL -> GROUND
 	 * 			touching_ground
 	 */
-	public function update(elapsed:Float)
+	public function update(elapsed:Float, control:Control)
 	{
 		// READ MEMORY
 
-		var just_jumped = FlxG.keys.anyJustPressed([Z, UP, SPACE]);
+		var just_jumped = control.jump && !memory.pre_jump;
 		var touching_ground = character.isTouching(FlxObject.FLOOR);
 		var touching_wall_left = character.isTouching(FlxObject.LEFT);
 		var touching_wall = touching_wall_left || character.isTouching(FlxObject.RIGHT);
@@ -288,7 +289,7 @@ class StateMachine
 					memory.init = false;
 				}
 
-				if (!FlxG.keys.anyPressed([Z, UP, SPACE]))
+				if (!control.jump)
 					memory.hold_jump_timer = -1;
 
 				if (just_jumped && n + 1 < max_n_jumps) // double jump
@@ -353,6 +354,7 @@ class StateMachine
 		// UPDATE MEMORY
 
 		memory.did_jump = did_jump;
+		memory.pre_jump = control.jump;
 
 		if (memory.hold_jump_timer >= 0)
 			memory.hold_jump_timer += elapsed;

@@ -1,8 +1,10 @@
 package;
 
-import Panel.Control;
-import Panel.EndGame;
-import Panel.Info;
+import Controller.Control;
+import Controller.KeyboardController;
+import Panel.ControlPanel;
+import Panel.EndGamePanel;
+import Panel.InfoPanel;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
@@ -27,7 +29,7 @@ class PlayState extends FlxState
 	public var exit:FlxSprite;
 	public var checkpoints:Array<FlxSprite> = [];
 
-	var status:EndGame;
+	var status:EndGamePanel;
 
 	var spike_height:Int = 5; // in pixels, this is used to check if there is an actual overlap with the spikes
 
@@ -121,14 +123,14 @@ class PlayState extends FlxState
 			haxe.Timer.delay(function() text.visible = false, 2000);
 		}
 
-		var ctrl_panel = new Control(controls, new FlxPoint(level.tileWidth * 1.5, 0), 16, FlxColor.fromInt(0xFF444444));
+		var ctrl_panel = new ControlPanel(controls, new FlxPoint(level.tileWidth * 1.5, 0), 16, FlxColor.fromInt(0xFF444444));
 		add(ctrl_panel);
 
-		var level_text = new Info(area_i, level_i);
+		var level_text = new InfoPanel(area_i, level_i);
 		level_text.x = FlxG.camera.width - level.tileWidth - level_text.width;
 		add(level_text);
 
-		status = new EndGame();
+		status = new EndGamePanel();
 		status.visible = false;
 		add(status);
 
@@ -149,6 +151,9 @@ class PlayState extends FlxState
 
 	override public function update(elapsed:Float)
 	{
+		var control = KeyboardController.get();
+		player.doUpdate(elapsed, control);
+
 		super.update(elapsed);
 		level.update(elapsed);
 
@@ -156,10 +161,10 @@ class PlayState extends FlxState
 		level.collideWithGround(player);
 
 		// collision with red spikes
-		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
+		if (level.collideWithSpikes(player) || control.reset)
 			FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i, Content.sound_damage));
 
-		if (FlxG.keys.justPressed.ESCAPE)
+		if (control.menu)
 			FlxG.switchState(new MenuState());
 
 		// win condition
