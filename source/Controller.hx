@@ -1,4 +1,5 @@
 import flixel.FlxG;
+import flixel.addons.editors.tiled.TiledMap;
 import flixel.input.keyboard.FlxKey;
 
 typedef Control =
@@ -26,6 +27,29 @@ class KeyboardController
 			jump: FlxG.keys.anyPressed(jump_keys),
 			reset: FlxG.keys.anyJustPressed(reset_keys),
 			menu: FlxG.keys.anyJustPressed(menu_keys),
+		}
+	}
+}
+
+class AIController
+{
+	var tiled_map:TiledMap;
+	var character:Character;
+
+	public function new(character:Character, tiled_map:TiledMap)
+	{
+		this.tiled_map = tiled_map;
+		this.character = character;
+	}
+
+	public function get()
+	{
+		return {
+			left: false,
+			right: true,
+			jump: false,
+			reset: false,
+			menu: false,
 		}
 	}
 }

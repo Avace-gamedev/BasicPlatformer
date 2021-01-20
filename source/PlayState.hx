@@ -1,5 +1,6 @@
 package;
 
+import Controller.AIController;
 import Controller.Control;
 import Controller.KeyboardController;
 import Panel.ControlPanel;
@@ -9,10 +10,13 @@ import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxState;
+import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
 import flixel.system.FlxSound;
 import flixel.text.FlxText;
 import flixel.tile.FlxTile;
+import flixel.tweens.FlxEase;
+import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxSpriteUtil;
 
@@ -27,11 +31,13 @@ class PlayState extends FlxState
 
 	public var player:Character;
 	public var exit:FlxSprite;
-	public var checkpoints:Array<FlxSprite> = [];
-
-	var status:EndGamePanel;
+	public var checkpoints:FlxTypedGroup<FlxSprite>;
 
 	var spike_height:Int = 5; // in pixels, this is used to check if there is an actual overlap with the spikes
+
+	var add_ai = false;
+	var player2:Character;
+	var ai_controller:AIController;
 
 	override public function new(area_i:Int = 0, level_i:Int = 0, checkpoint_i = -1, sound:FlxSound = null)
 	{
@@ -64,12 +70,33 @@ class PlayState extends FlxState
 		exit = new FlxSprite(0, 0);
 		exit.makeGraphic(32, 32, 0xff00ff00);
 
+		checkpoints = new FlxTypedGroup<FlxSprite>();
+
 		// level = new TiledLevel(AssetPaths.second__tmx, this);
 		level = new TiledLevel(Content.areas[area_i][level_i], this);
 		add(level.backgroundLayer);
 		add(level.imagesLayer);
 		add(level.objectsLayer);
 		add(level.foregroundTiles);
+
+		if (add_ai)
+		{
+			player2 = new Character(area_i > 0 || level_i >= 5);
+			player2.x = player.x;
+			player2.y = player.y;
+			player2.color = FlxColor.GRAY;
+			player2.alpha = 0.5;
+			ai_controller = new AIController(player2, level);
+		}
+
+		// add stuff
+		add(exit);
+		add(checkpoints);
+
+		if (add_ai)
+			add(player2);
+
+		add(player);
 
 		// TMP
 		// var overlay = new FlxSprite();
@@ -120,7 +147,7 @@ class PlayState extends FlxState
 			var text = new FlxText(level.tileWidth, 28 * level.tileHeight, 27 * level.tileWidth, "Unlocked: Double Jump", 48);
 			text.alignment = CENTER;
 			add(text);
-			haxe.Timer.delay(function() text.visible = false, 2000);
+			FlxTween.color(text, 2, FlxColor.WHITE, FlxColor.fromRGBFloat(1, 1, 1, 0), {ease: FlxEase.quintIn});
 		}
 
 		var ctrl_panel = new ControlPanel(controls, new FlxPoint(level.tileWidth * 1.5, 0), 16, FlxColor.fromInt(0xFF444444));
@@ -130,22 +157,18 @@ class PlayState extends FlxState
 		level_text.x = FlxG.camera.width - level.tileWidth - level_text.width;
 		add(level_text);
 
-		status = new EndGamePanel();
-		status.visible = false;
-		add(status);
-
 		// CHECKPOINT
 
 		if (checkpoint_i >= 0)
 		{
-			player.x = checkpoints[checkpoint_i].x + checkpoints[checkpoint_i].width / 2;
-			player.y = checkpoints[checkpoint_i].y + checkpoints[checkpoint_i].height / 2;
+			player.x = checkpoints.members[checkpoint_i].x + checkpoints.members[checkpoint_i].width / 2;
+			player.y = checkpoints.members[checkpoint_i].y + checkpoints.members[checkpoint_i].height / 2;
 		}
 
 		for (i in 0...(checkpoint_i + 1))
 		{
-			checkpoints[i].active = false;
-			checkpoints[i].visible = false;
+			checkpoints.members[i].active = false;
+			checkpoints.members[i].visible = false;
 		}
 	}
 
@@ -172,14 +195,26 @@ class PlayState extends FlxState
 
 		// hit checkpoint
 		for (i in 0...checkpoints.length)
-			if (checkpoints[i].active)
-				FlxG.overlap(checkpoints[i], player, function(_, _)
-				{
-					Content.sound_checkpoint.play();
-					checkpoints[i].active = false;
-					checkpoints[i].visible = false;
-					checkpoint_i = i;
-				});
+			if (checkpoints.members[i].active)
+				if (FlxG.overlap(checkpoints.members[i], player))
+					hitCheckpoint(i);
+
+		if (add_ai)
+		{
+			player2.doUpdate(elapsed, ai_controller.get());
+			FlxG.overlap(exit, player2, function(_, _) player2.active = false);
+			level.collideWithGround(player2);
+			if (level.collideWithSpikes(player2))
+				player2.active = false;
+		}
+	}
+
+	public function hitCheckpoint(i:Int)
+	{
+		Content.sound_checkpoint.play();
+		checkpoints.members[i].active = false;
+		checkpoints.members[i].visible = false;
+		checkpoint_i = i;
 	}
 
 	public function win(Exit:FlxObject, Player:FlxObject):Void
@@ -192,7 +227,8 @@ class PlayState extends FlxState
 			FlxG.switchState(new PlayState(area_i + 1, 0, -1, Content.sound_exit));
 		else
 		{
-			status.visible = true;
+			var status = new EndGamePanel();
+			add(status);
 			Content.sound_exit.play();
 		}
 	}

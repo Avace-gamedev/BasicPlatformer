@@ -33,9 +33,11 @@ class Character extends FlxSprite
 		loadGraphic(AssetPaths.character__png, true, 32, 32);
 		animation.add("stand", [0, 1], 2, true);
 		animation.add("jump", [5, 6, 7, 8, 9], 10, false);
-		animation.add("landing", [6, 5], 10, false);
+		animation.add("land", [6, 5], 10, false);
 		animation.add("grab_left", [10], 2, true);
 		animation.add("grab_right", [10], 2, true, true, false);
+		animation.add("unstick_left", [10, 11, 12, 13], 12, true);
+		animation.add("unstick_right", [10, 11, 12, 13], 12, true, true, false);
 		animation.play("stand");
 
 		height = 28;
@@ -66,57 +68,19 @@ class Character extends FlxSprite
 		acceleration.y = 2000; // gravity
 		maxVelocity.y = max_velocity_y;
 
-		var init = state_machine.init;
-
 		state_machine.update(elapsed, control);
 
 		switch (state_machine.state)
 		{
 			case GROUND:
-				if (init)
-				{
-					// first frame of the state
-					Content.sound_land.play();
-
-					switch (state_machine.last_state)
-					{
-						case AIR(_):
-							animation.play("landing");
-						default:
-					}
-				}
-
-				switch (state_machine.last_state)
-				{
-					case AIR(_):
-						if (animation.finished) animation.play("stand");
-					case WALL(_):
-						animation.play("stand");
-					default:
-				}
-
 				drag.x = stoping_drag; // we can set this at every frame because it's only taken into account when acceleration is 0
 			case AIR(_):
-				if (init)
-					if (state_machine.did_jump)
-						animation.play("jump");
-					else
-						animation.play("stand");
-
 				drag.x = air_drag;
-
-				if (animation.finished)
-					animation.play("stand");
 			case WALL(left):
 				acceleration.y *= 0.25;
 				maxVelocity.y = max_velocity_y / 10;
 				if (velocity.y < 0)
 					velocity.y = 0;
-
-				if (left)
-					animation.play("grab_left");
-				else
-					animation.play("grab_right");
 		}
 
 		// HORIZONTAL MOVEMENT
@@ -178,7 +142,7 @@ class StateMachine
 	// PARAMETERS
 	var max_n_jumps:Int = 2;
 	var hold_jump_delay:Float = 0.1;
-	var jump_buffer_delay:Float = 0.05;
+	var jump_buffer_delay:Float = 0.2;
 	var ledge_assist_delay:Float = 0.05;
 	var stick_wall_delay:Float = 0.3;
 
@@ -259,6 +223,17 @@ class StateMachine
 		var touching_wall = touching_wall_left || character.isTouching(FlxObject.RIGHT);
 		var did_jump = false;
 
+		// THIS IS UGLY !!!
+		// keep stuck to the wall
+		// pb is that I need to start applying x acceleration as soon as
+		// character touches the wall, if I do it in state WALL
+		// I miss the first frame (because I use weak transitions)
+		// should I switch to strong transitions ? ... :/
+		if (touching_wall_left)
+			character.acceleration.x = -100;
+		else if (touching_wall && !touching_wall_left)
+			character.acceleration.x = 100;
+
 		// UPDATE STATE
 		switch (state)
 		{
@@ -266,8 +241,22 @@ class StateMachine
 				if (memory.init)
 				{
 					memory.ledge_assist_timer = -1;
+
+					switch (memory.last_state)
+					{
+						case AIR(_):
+							character.animation.play("land");
+							Content.sound_land.play();
+						case WALL(_):
+							character.animation.play("stand");
+						default:
+					}
+
 					memory.init = false;
 				}
+
+				if (character.animation.finished)
+					character.animation.play("stand");
 
 				if (just_jumped) // jump
 				{
@@ -286,6 +275,12 @@ class StateMachine
 				{
 					memory.hold_jump_timer = 0;
 					memory.jump_buffer_timer = -1;
+
+					if (memory.did_jump)
+						character.animation.play("jump");
+					else
+						character.animation.play("stand");
+
 					memory.init = false;
 				}
 
@@ -329,7 +324,10 @@ class StateMachine
 			case WALL(left):
 				if (memory.init)
 				{
-					memory.stick_wall_timer = 0;
+					if (left)
+						character.animation.play("grab_left");
+					else
+						character.animation.play("grab_right");
 					memory.init = false;
 				}
 
@@ -339,13 +337,35 @@ class StateMachine
 					did_jump = true;
 					switchState(AIR(0));
 				}
-				else if (memory.stick_wall_timer > stick_wall_delay)
-				{
+				if (left
+					&& !character.isTouching(FlxObject.LEFT)
+					|| !left
+					&& !character.isTouching(FlxObject.RIGHT)) // there's no wall anymore
 					switchState(AIR(0));
+				else if ((left && control.right || !left && control.left)
+					&& memory.stick_wall_timer < 0) // if character stuck and horizontal movement asked
+				{
+					memory.stick_wall_timer = 0;
 					if (left)
-						character.acceleration.x += 1;
+						character.animation.play("unstick_left");
 					else
-						character.acceleration.x -= 1;
+						character.animation.play("unstick_right");
+				}
+				else if (left && !control.right || !left && !control.left) // released arrow key too soon to unstick
+				{
+					memory.stick_wall_timer = -1;
+					if (left)
+						character.animation.play("grab_left");
+					else
+						character.animation.play("grab_right");
+				}
+				else if (memory.stick_wall_timer > stick_wall_delay) // unstick from wall if pressed arrow key long enough
+				{
+					if (left)
+						character.velocity.x = character.maxVelocity.x / 10;
+					else
+						character.velocity.x = -character.maxVelocity.x / 10;
+					switchState(AIR(0));
 				}
 				else if (touching_ground)
 					switchState(GROUND);

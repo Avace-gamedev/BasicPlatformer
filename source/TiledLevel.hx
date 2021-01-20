@@ -303,7 +303,6 @@ class TiledLevel extends TiledMap
 			case "player_start":
 				state.player.x = x;
 				state.player.y = y;
-				group.add(state.player);
 				tilemap_desc.starting_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 
 			case "checkpoint":
@@ -311,13 +310,11 @@ class TiledLevel extends TiledMap
 				checkpoint_sprite.makeGraphic(o.width, o.height, FlxColor.fromRGBFloat(1, 1, 1, 0.2));
 				checkpoint_sprite.x = x;
 				checkpoint_sprite.y = y;
-				group.add(checkpoint_sprite);
-				state.checkpoints.push(checkpoint_sprite);
+				state.checkpoints.add(checkpoint_sprite);
 
 			case "exit":
 				state.exit.x = x;
 				state.exit.y = y;
-				group.add(state.exit);
 				tilemap_desc.exit_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 		}
 	}
