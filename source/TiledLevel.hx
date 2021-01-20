@@ -15,13 +15,25 @@ import flixel.addons.editors.tiled.TiledTileSet;
 import flixel.addons.tile.FlxTileSpecial;
 import flixel.addons.tile.FlxTilemapExt;
 import flixel.group.FlxGroup;
+import flixel.math.FlxPoint;
 import flixel.tile.FlxTile;
 import flixel.tile.FlxTilemap;
 import flixel.util.FlxColor;
 import haxe.io.Path;
 
+typedef Tilemap =
+{
+	width:Int,
+	height:Int,
+	tile_size:Int,
+	tiles:Array<Int>,
+	collisions:Array<Bool>,
+	starting_pos:FlxPoint,
+	exit_pos:FlxPoint,
+}
+
 /**
- * @author Samuel Batista
+ * original author Samuel Batista
  */
 class TiledLevel extends TiledMap
 {
@@ -33,6 +45,8 @@ class TiledLevel extends TiledMap
 	public var foregroundTiles:FlxGroup;
 	public var objectsLayer:FlxGroup;
 	public var backgroundLayer:FlxGroup;
+
+	public var tilemap_desc:Tilemap;
 
 	var groudTileLayer:Array<FlxTilemap>;
 	var destructibleTileLayer:Array<FlxTilemap>;
@@ -56,6 +70,16 @@ class TiledLevel extends TiledMap
 	public function new(tiledLevel:FlxTiledMapAsset, state:PlayState)
 	{
 		super(tiledLevel);
+
+		tilemap_desc = {
+			width: width,
+			height: height,
+			tile_size: tileWidth, // tileHeight == tileWidth
+			tiles: [for (i in 0...width * height) 0],
+			collisions: [for (i in 0...width * height) false],
+			starting_pos: new FlxPoint(),
+			exit_pos: new FlxPoint(),
+		};
 
 		imagesLayer = new FlxGroup();
 		foregroundTiles = new FlxGroup();
@@ -99,23 +123,10 @@ class TiledLevel extends TiledMap
 			var tilemap = new FlxTilemapExt();
 			tilemap.loadMapFromArray(tileLayer.tileArray, width, height, processedPath, tileSet.tileWidth, tileSet.tileHeight, OFF, tileSet.firstGID, 1, 1);
 
-			if (tileLayer.properties.contains("animated"))
-			{
-				var tileset = tilesets["level"];
-				var specialTiles:Map<Int, TiledTilePropertySet> = new Map();
-				for (tileProp in tileset.tileProps)
-				{
-					if (tileProp != null && tileProp.animationFrames.length > 0)
-					{
-						specialTiles[tileProp.tileID + tileset.firstGID] = tileProp;
-					}
-				}
-				var tileLayer:TiledTileLayer = cast layer;
-				tilemap.setSpecialTiles([
-					for (tile in tileLayer.tiles)
-						if (tile != null && specialTiles.exists(tile.tileID)) getAnimatedTile(specialTiles[tile.tileID], tileset) else null
-				]);
-			}
+			// load tilemap into desc
+			for (i in 0...tileLayer.tileArray.length)
+				if (tileLayer.tileArray[i] > 0)
+					tilemap_desc.tiles[i] = tileLayer.tileArray[i];
 
 			if (tileLayer.properties.contains("nocollide"))
 			{
@@ -124,6 +135,11 @@ class TiledLevel extends TiledMap
 			else
 			{
 				foregroundTiles.add(tilemap);
+
+				// load collision data into desc
+				for (i in 0...tileLayer.tileArray.length)
+					if (tileLayer.tileArray[i] > 0)
+						tilemap_desc.collisions[i] = true;
 
 				// WHITE tiles
 
@@ -288,6 +304,7 @@ class TiledLevel extends TiledMap
 				state.player.x = x;
 				state.player.y = y;
 				group.add(state.player);
+				tilemap_desc.starting_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 
 			case "checkpoint":
 				var checkpoint_sprite = new FlxSprite();
@@ -301,6 +318,7 @@ class TiledLevel extends TiledMap
 				state.exit.x = x;
 				state.exit.y = y;
 				group.add(state.exit);
+				tilemap_desc.exit_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 		}
 	}
 
@@ -326,7 +344,7 @@ class TiledLevel extends TiledMap
 			if (map.overlapsWithCallback(obj, function(o1, o2)
 			{
 				var tile:FlxTile = cast(o1, FlxTile);
-				if (tile.index == spikes_bot_id || tile.index == spikes_left_id || tile.index == spikes_right_id || tile.index == spikes_top_id)
+				if (isSpike(tile.index))
 					return false;
 
 				return FlxObject.separate(o1, o2);
@@ -380,5 +398,10 @@ class TiledLevel extends TiledMap
 			to_destroy[0].tilemap.setTileByIndex(to_destroy[0].id, 0, true);
 			to_destroy.shift();
 		}
+	}
+
+	public function isSpike(id)
+	{
+		return id == spikes_bot_id || id == spikes_left_id || id == spikes_right_id || id == spikes_top_id;
 	}
 }

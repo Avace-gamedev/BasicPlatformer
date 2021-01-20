@@ -1,31 +1,12 @@
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
+import flixel.tweens.FlxEase;
+import flixel.tweens.FlxTween;
 
 class Character extends FlxSprite
 {
-	// jump buffering: if you press jump too early (by at most jump_buffering_delay seconds), you jump anyway once grounded
-	var last_jump_cmd:Float = -1;
-	var jump_buffering_delay:Float;
-
-	// ledge assist: if you jump too late (by at most ledge_assist_delay seconds) and you're no longer grounded, you jump anyway
-	var last_floored_timer:Float = 0;
-	var ledge_assist_delay:Float;
-
-	// jump height: you can maintain the jump key to jump higher
-	var jump_timer:Float = -1;
-	var jump_higher_delay:Float;
-
-	var wall_stick_timer:Float = -1;
-	var wall_stick_delay:Float = 0.3;
-	var touching_left_wall:Bool = true;
-
-	var jump_btn_released:Bool = true;
-	var can_jump(get, never):Bool;
-
 	public var double_jump_unlocked = false;
-
-	var double_jump = false;
 
 	var max_velocity_y = 600;
 	var jump_velocity:Float;
@@ -38,9 +19,14 @@ class Character extends FlxSprite
 	var turning_drag:Float;
 	var wall_drag:Float;
 
-	override public function new()
+	var state_machine:StateMachine;
+
+	override public function new(double_jump_unlocked = false)
 	{
 		super();
+
+		this.double_jump_unlocked = double_jump_unlocked;
+		state_machine = new StateMachine(this);
 
 		loadGraphic(AssetPaths.character__png, true, 32, 32);
 		animation.add("stand", [0, 1], 2, true);
@@ -54,11 +40,10 @@ class Character extends FlxSprite
 		width = 28;
 		offset.set(2, 4);
 
-		// CONFIG
+		scale.set(0, 0);
+		FlxTween.tween(this, {"scale.x": 1, "scale.y": 1}, 0.5, {ease: FlxEase.quadOut, type: ONESHOT});
 
-		ledge_assist_delay = 0.05;
-		jump_buffering_delay = 0.05;
-		jump_higher_delay = 0.1; // at 60 fps this is 6 frames
+		// CONFIG
 
 		maxVelocity.x = 600;
 		maxVelocity.y = max_velocity_y;
@@ -73,167 +58,319 @@ class Character extends FlxSprite
 		wall_drag = maxVelocity.y * 5000;
 	}
 
-	function get_can_jump()
-	{
-		//    player hit jump a little bit early before touching ground
-		// OR player is hitting jump and is on ground
-		// OR player is hitting jump and is a little bit too late after leaving ground
-		return (isTouching(FlxObject.FLOOR) && (last_floored_timer > 0 || (last_jump_cmd >= 0 && last_jump_cmd < jump_buffering_delay)))
-			|| (jump_timer >= 0 && jump_timer < jump_higher_delay)
-			|| (jump_btn_released && FlxG.keys.anyPressed([Z, UP, SPACE]) && ((isTouching(FlxObject.FLOOR) // on floor
-				|| (double_jump_unlocked && !double_jump)) || wall_stick_timer >= 0 // stuck on a wall
-				|| last_floored_timer < ledge_assist_delay // little late
-			));
-	}
-
 	override public function update(elapsed:Float)
 	{
 		acceleration.x = 0;
 		acceleration.y = 2000; // gravity
 		maxVelocity.y = max_velocity_y;
 
-		// update timers
-		if (wall_stick_timer >= 0)
-			wall_stick_timer += elapsed;
-		if (last_jump_cmd >= 0)
-			last_jump_cmd += elapsed;
+		var init = state_machine.init;
 
-		// VERTICAL MOVEMENT
+		state_machine.update(elapsed);
 
-		if (isTouching(FlxObject.FLOOR))
+		switch (state_machine.state)
 		{
-			if (last_floored_timer > 0) // was in the air before
-			{
-				Content.sound_land.play();
-				animation.play("landing");
-			}
+			case GROUND:
+				if (init)
+				{
+					// first frame of the state
+					Content.sound_land.play();
 
-			if (animation.finished || wall_stick_timer >= 0)
-				animation.play("stand");
+					switch (state_machine.last_state)
+					{
+						case AIR(_):
+							animation.play("landing");
+						default:
+					}
+				}
 
-			last_floored_timer = 0;
-			jump_timer = -1;
-			double_jump = false;
+				switch (state_machine.last_state)
+				{
+					case AIR(_):
+						if (animation.finished) animation.play("stand");
+					case WALL(_):
+						animation.play("stand");
+					default:
+				}
 
-			drag.x = stoping_drag;
+				drag.x = stoping_drag; // we can set this at every frame because it's only taken into account when acceleration is 0
+			case AIR(_):
+				if (init)
+					if (state_machine.did_jump)
+						animation.play("jump");
+					else
+						animation.play("stand");
 
-			wall_stick_timer = -1;
-		}
-		else if (isTouching(FlxObject.LEFT) || isTouching(FlxObject.RIGHT) || wall_stick_timer >= 0)
-		{
-			// WALL STICK
+				drag.x = air_drag;
 
-			if (wall_stick_timer < 0)
-			{
-				wall_stick_timer = 0;
-				acceleration.y -= 1500;
-				touching_left_wall = isTouching(FlxObject.LEFT);
-				if (touching_left_wall)
+				if (animation.finished)
+					animation.play("stand");
+			case WALL(left):
+				acceleration.y *= 0.25;
+				maxVelocity.y = max_velocity_y / 10;
+				if (velocity.y < 0)
+					velocity.y = 0;
+
+				if (left)
 					animation.play("grab_left");
 				else
 					animation.play("grab_right");
-			}
-			else if (wall_stick_timer > wall_stick_delay)
-			{
-				wall_stick_timer = -1;
-				animation.play("stand");
-			}
-			acceleration.y -= 1800;
-			maxVelocity.y = max_velocity_y / 10;
-			double_jump = false;
-
-			if (velocity.y < 0)
-				velocity.y = 0;
-		}
-		else // player in the air
-		{
-			last_floored_timer += elapsed;
-			drag.x = air_drag;
-			wall_stick_timer = -1;
-			animation.play("stand");
-		}
-
-		if (can_jump)
-			jump(elapsed)
-		else if (FlxG.keys.anyJustPressed([Z, UP, SPACE]))
-			last_jump_cmd = 0; // start timer (jump buffering)
-		else if (FlxG.keys.anyJustReleased([Z, UP, SPACE]))
-			jump_btn_released = true;
-
-		if (FlxG.keys.anyJustReleased([Z, UP, SPACE]) && velocity.y < 0)
-		{
-			velocity.y *= 0.5;
-			jump_timer = -1;
 		}
 
 		// HORIZONTAL MOVEMENT
 		// don't take into account if stuck to wall
-		if (wall_stick_timer < 0 || wall_stick_timer > wall_stick_delay)
+		switch (state_machine.state)
 		{
-			if (FlxG.keys.anyPressed([LEFT, Q]))
-			{
-				if (velocity.x > 0)
-					drag.x = turning_drag;
-
-				if (isTouching(FlxObject.FLOOR))
-					acceleration.x -= ground_acceleration;
-				else
-					acceleration.x -= air_acceleration;
-			}
-
-			if (FlxG.keys.anyPressed([RIGHT, D]))
-			{
-				if (velocity.x < 0)
-					drag.x = turning_drag;
-
-				if (isTouching(FlxObject.FLOOR))
-					acceleration.x += ground_acceleration;
-				else
-					acceleration.x += air_acceleration;
-			}
+			case WALL(_):
+			default:
+				if (FlxG.keys.anyPressed([LEFT, Q]))
+				{
+					if (velocity.x > 0)
+						drag.x = turning_drag;
+					if (isTouching(FlxObject.FLOOR))
+						acceleration.x -= ground_acceleration;
+					else
+						acceleration.x -= air_acceleration;
+				}
+				if (FlxG.keys.anyPressed([RIGHT, D]))
+				{
+					if (velocity.x < 0)
+						drag.x = turning_drag;
+					if (isTouching(FlxObject.FLOOR))
+						acceleration.x += ground_acceleration;
+					else
+						acceleration.x += air_acceleration;
+				}
 		}
 
 		super.update(elapsed);
 	}
 
-	function jump(elapsed:Float)
+	public function jump(elapsed:Float, wall:Bool = false, wall_left:Bool = false)
 	{
-		if (jump_timer < 0 || jump_timer > jump_higher_delay) // button was not pressed before
+		if (wall)
 		{
-			velocity.y = 0;
-			jump_timer = 0;
-			animation.play("jump");
-			Content.sound_jump.play();
-
-			if (!isTouching(FlxObject.FLOOR) && wall_stick_timer < 0)
-				double_jump = true;
-
-			if (wall_stick_timer >= 0) // wall jump to right
-			{
-				if (touching_left_wall)
-					velocity.x += Math.sqrt(2) * jump_velocity;
-				else
-					velocity.x -= Math.sqrt(2) * jump_velocity;
-				velocity.y -= Math.sqrt(2) * jump_velocity;
-
-				wall_stick_timer = -1;
-			}
+			if (wall_left)
+				velocity.x += Math.sqrt(2) * jump_velocity;
 			else
-				velocity.y -= jump_velocity; // after initial impulse, always jump up
+				velocity.x -= Math.sqrt(2) * jump_velocity;
+			velocity.y -= Math.sqrt(2) * jump_velocity;
 		}
 		else
+			velocity.y -= jump_velocity; // after initial impulse, always jump up
+	}
+
+	public function continue_jump(elapsed:Float)
+		velocity.y -= jump_velocity;
+}
+
+enum MachineState
+{
+	GROUND;
+	AIR(n_jumps:Int);
+	WALL(left:Bool);
+}
+
+class StateMachine
+{
+	var character:Character;
+
+	// PARAMETERS
+	var max_n_jumps:Int = 2;
+	var hold_jump_delay:Float = 0.1;
+	var jump_buffer_delay:Float = 0.05;
+	var ledge_assist_delay:Float = 0.05;
+	var stick_wall_delay:Float = 0.3;
+
+	// ---- END PARAMETERS
+	var memory = {
+		// timers
+		hold_jump_timer: -1.0,
+		jump_buffer_timer: -1.0,
+		ledge_assist_timer: -1.0,
+		stick_wall_timer: -1.0,
+		//
+		init: true,
+		last_state: AIR(1),
+		did_jump: false,
+	};
+
+	public var state(default, null):MachineState;
+	public var init(get, never):Bool;
+	public var did_jump(get, never):Bool;
+	public var last_state(get, never):MachineState;
+
+	public function new(character:Character)
+	{
+		this.character = character;
+		memory.last_state = AIR(1);
+		state = AIR(1);
+
+		if (character.double_jump_unlocked)
+			max_n_jumps = 2;
+		else
+			max_n_jumps = 1;
+	}
+
+	public function get_init()
+		return memory.init;
+
+	public function get_did_jump()
+		return memory.did_jump;
+
+	public function get_last_state()
+		return memory.last_state;
+
+	/*
+	 * automaton:
+	 * 	- states: GROUND, AIR(n_jumps), WALL
+	 * 	- transitions:
+	 * 		- falling: GROUND -> AIR(0)
+	 * 			ledge_assist_timer > ledge_assist delay
+	 * 			/ reset ledge_assist_timer
+	 * 		- jump: GROUND -> AIR(0)
+	 * 			justpressed jump key
+	 * 		- double_jump: AIR(n) -> AIR(n+1)
+	 * 			justpressed jump key
+	 * 		and n+1 < max_n_jumps
+	 * 		- buffered_jump: AIR(n) -> AIR(0)
+	 * 			touching_ground
+	 * 		and jump_buffer_timer >= 0 && jump_buffer_timer <= jump_buffer_delay
+	 * 			/ reset jump_buffer_timer
+	 * 		- land: AIR(n) -> GROUND
+	 * 			touching_ground
+	 * 		- stick: AIR(n) -> WALL
+	 * 			touching_wall
+	 * 			/ reset stick_wall_timer
+	 * 		- unstick: WALL -> AIR(0)
+	 * 			justpressed jump key
+	 * 		 or stick_wall_timer > stick_wall_delay
+	 * 		- land_from_wall: WALL -> GROUND
+	 * 			touching_ground
+	 */
+	public function update(elapsed:Float)
+	{
+		// READ MEMORY
+
+		var just_jumped = FlxG.keys.anyJustPressed([Z, UP, SPACE]);
+		var touching_ground = character.isTouching(FlxObject.FLOOR);
+		var touching_wall_left = character.isTouching(FlxObject.LEFT);
+		var touching_wall = touching_wall_left || character.isTouching(FlxObject.RIGHT);
+		var did_jump = false;
+
+		// UPDATE STATE
+		switch (state)
 		{
-			if (wall_stick_timer < 0)
-			{
-				jump_timer += elapsed;
-				velocity.y -= jump_velocity;
-			}
-			else
-				jump_timer = -1;
+			case GROUND:
+				if (memory.init)
+				{
+					memory.ledge_assist_timer = -1;
+					memory.init = false;
+				}
+
+				if (just_jumped) // jump
+				{
+					character.jump(elapsed);
+					did_jump = true;
+					switchState(AIR(0));
+				}
+				else if (!touching_ground && memory.ledge_assist_timer < 0) // falling
+					memory.ledge_assist_timer = 0;
+				else if (touching_ground && memory.ledge_assist_timer >= 0) // need to reset timer
+					memory.ledge_assist_timer = -1;
+				else if (memory.ledge_assist_timer > ledge_assist_delay) // fall
+					switchState(AIR(0));
+			case AIR(n):
+				if (memory.init)
+				{
+					memory.hold_jump_timer = 0;
+					memory.jump_buffer_timer = -1;
+					memory.init = false;
+				}
+
+				if (!FlxG.keys.anyPressed([Z, UP, SPACE]))
+					memory.hold_jump_timer = -1;
+
+				if (just_jumped && n + 1 < max_n_jumps) // double jump
+				{
+					switchState(AIR(n + 1));
+					character.jump(elapsed);
+					did_jump = true;
+				}
+				else if (!just_jumped
+					&& memory.hold_jump_timer >= 0
+					&& memory.hold_jump_timer <= hold_jump_delay) // holding jump key makes you go higher
+					character.continue_jump(elapsed);
+				else if (touching_ground
+					&& memory.jump_buffer_timer >= 0
+					&& memory.jump_buffer_timer <= jump_buffer_delay) // apply buffered jump
+				{
+					character.jump(elapsed);
+					did_jump = true;
+					switchState(AIR(0));
+				}
+				else if (touching_wall
+					&& memory.jump_buffer_timer >= 0
+					&& memory.jump_buffer_timer <= jump_buffer_delay) // apply buffered jump
+				{
+					character.jump(elapsed, true, touching_wall_left);
+					did_jump = true;
+					switchState(AIR(0));
+				}
+				else if (touching_ground)
+					switchState(GROUND);
+				else if (touching_wall)
+					switchState(WALL(touching_wall_left));
+
+				if (just_jumped && !did_jump) // pressed jump key but didn't jump, buffer it
+					memory.jump_buffer_timer = 0;
+
+			case WALL(left):
+				if (memory.init)
+				{
+					memory.stick_wall_timer = 0;
+					memory.init = false;
+				}
+
+				if (just_jumped)
+				{
+					character.jump(elapsed, true, left);
+					did_jump = true;
+					switchState(AIR(0));
+				}
+				else if (memory.stick_wall_timer > stick_wall_delay)
+				{
+					switchState(AIR(0));
+					if (left)
+						character.acceleration.x += 1;
+					else
+						character.acceleration.x -= 1;
+				}
+				else if (touching_ground)
+					switchState(GROUND);
 		}
 
-		jump_btn_released = false;
-		last_floored_timer = 2 * ledge_assist_delay; // no double jumps
-		last_jump_cmd = -1; // reset jump_cmd timer
+		// UPDATE MEMORY
+
+		memory.did_jump = did_jump;
+
+		if (memory.hold_jump_timer >= 0)
+			memory.hold_jump_timer += elapsed;
+
+		if (memory.jump_buffer_timer >= 0)
+			memory.jump_buffer_timer += elapsed;
+
+		if (memory.ledge_assist_timer >= 0)
+			memory.ledge_assist_timer += elapsed;
+
+		if (memory.stick_wall_timer >= 0)
+			memory.stick_wall_timer += elapsed;
+	}
+
+	function switchState(new_state:MachineState)
+	{
+		memory.last_state = state;
+		state = new_state;
+		memory.init = true;
 	}
 }

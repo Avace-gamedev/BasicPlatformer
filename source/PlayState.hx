@@ -12,6 +12,7 @@ import flixel.system.FlxSound;
 import flixel.text.FlxText;
 import flixel.tile.FlxTile;
 import flixel.util.FlxColor;
+import flixel.util.FlxSpriteUtil;
 
 class PlayState extends FlxState
 {
@@ -55,7 +56,7 @@ class PlayState extends FlxState
 
 		// END CONFIG
 
-		player = new Character();
+		player = new Character(area_i > 0 || level_i >= 5);
 		FlxG.camera.follow(player);
 
 		exit = new FlxSprite(0, 0);
@@ -68,13 +69,41 @@ class PlayState extends FlxState
 		add(level.objectsLayer);
 		add(level.foregroundTiles);
 
+		// TMP
+		// var overlay = new FlxSprite();
+		// overlay.makeGraphic(level.fullWidth, level.fullHeight, FlxColor.TRANSPARENT);
+		// add(overlay);
+		// for (i in 0...level.tilemap_desc.collisions.length)
+		// 	if (level.tilemap_desc.collisions[i])
+		// 	{
+		// 		var t_x:Int = i % level.tilemap_desc.width;
+		// 		var t_y:Int = Math.floor(i / level.tilemap_desc.width);
+		// 		if (level.isSpike(level.tilemap_desc.tiles[i]))
+		// 			FlxSpriteUtil.drawCircle(overlay, (t_x + 0.5) * level.tilemap_desc.tile_size, (t_y + 0.5) * level.tilemap_desc.tile_size, 10,
+		// 				FlxColor.RED);
+		// 		else
+		// 			FlxSpriteUtil.drawCircle(overlay, (t_x + 0.5) * level.tilemap_desc.tile_size, (t_y + 0.5) * level.tilemap_desc.tile_size, 10,
+		// 				FlxColor.GRAY);
+		// 	}
+
+		// FlxSpriteUtil.drawCircle(overlay, (level.tilemap_desc.starting_pos.x + 0.5) * level.tilemap_desc.tile_size,
+		// 	(level.tilemap_desc.starting_pos.y + 0.5) * level.tilemap_desc.tile_size, 10, FlxColor.BLUE);
+		// FlxSpriteUtil.drawCircle(overlay, (level.tilemap_desc.exit_pos.x + 0.5) * level.tilemap_desc.tile_size,
+		// 	(level.tilemap_desc.exit_pos.y + 0.5) * level.tilemap_desc.tile_size, 10, FlxColor.GREEN);
+
+		// var g = new PathingGraph(level);
+		// for (i in 0...g.segments.length)
+		// 	FlxSpriteUtil.drawLine(overlay, g.segments[i].start_x * level.tileWidth, g.segments[i].y * level.tileHeight + 16,
+		// 		(g.segments[i].end_x + 1) * level.tileWidth, g.segments[i].y * level.tileHeight + 16, {
+		// 		color: FlxColor.RED
+		// 	});
+
 		// UI
 
 		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"], ["Esc", "Menu"]];
 
 		if (area_i > 0 || level_i >= 5)
 		{
-			player.double_jump_unlocked = true;
 			controls = [
 				["← →", "move"],
 				["↑", "jump"],
