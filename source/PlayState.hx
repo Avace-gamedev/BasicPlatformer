@@ -1,7 +1,6 @@
 package;
 
 import Controller.AIController;
-import Controller.Control;
 import Controller.KeyboardController;
 import Panel.ControlPanel;
 import Panel.EndGamePanel;
@@ -14,11 +13,9 @@ import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
 import flixel.system.FlxSound;
 import flixel.text.FlxText;
-import flixel.tile.FlxTile;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
-import flixel.util.FlxSpriteUtil;
 
 class PlayState extends FlxState
 {

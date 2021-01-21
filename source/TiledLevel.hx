@@ -20,6 +20,7 @@ import flixel.tile.FlxTile;
 import flixel.tile.FlxTilemap;
 import flixel.util.FlxColor;
 import haxe.io.Path;
+import openfl.display.BitmapData;
 
 typedef Tilemap =
 {
@@ -30,6 +31,13 @@ typedef Tilemap =
 	collisions:Array<Bool>,
 	starting_pos:FlxPoint,
 	exit_pos:FlxPoint,
+}
+
+typedef Tileset =
+{
+	data:BitmapData,
+	width:Int,
+	height:Int,
 }
 
 /**
@@ -46,8 +54,8 @@ class TiledLevel extends TiledMap
 	public var objectsLayer:FlxGroup;
 	public var backgroundLayer:FlxGroup;
 
-	public var tilemap_desc:Tilemap;
-
+	// public var tilemap_desc:Tilemap;
+	// public var tileset:Tileset;
 	var groudTileLayer:Array<FlxTilemap>;
 	var destructibleTileLayer:Array<FlxTilemap>;
 	var spikeTileLayer:Array<FlxTilemap>;
@@ -71,15 +79,15 @@ class TiledLevel extends TiledMap
 	{
 		super(tiledLevel);
 
-		tilemap_desc = {
-			width: width,
-			height: height,
-			tile_size: tileWidth, // tileHeight == tileWidth
-			tiles: [for (i in 0...width * height) 0],
-			collisions: [for (i in 0...width * height) false],
-			starting_pos: new FlxPoint(),
-			exit_pos: new FlxPoint(),
-		};
+		// tilemap_desc = {
+		// 	width: width,
+		// 	height: height,
+		// 	tile_size: tileWidth, // tileHeight == tileWidth
+		// 	tiles: [for (i in 0...width * height) 0],
+		// 	collisions: [for (i in 0...width * height) false],
+		// 	starting_pos: new FlxPoint(),
+		// 	exit_pos: new FlxPoint(),
+		// };
 
 		imagesLayer = new FlxGroup();
 		foregroundTiles = new FlxGroup();
@@ -119,14 +127,21 @@ class TiledLevel extends TiledMap
 			var imagePath = new Path(tileSet.imageSource);
 			var processedPath = c_PATH_LEVEL_TILESHEETS + imagePath.file + "." + imagePath.ext;
 
+			// var tileset_bmp = new FlxSprite().loadGraphic(processedPath);
+			// tileset = {
+			// 	data: tileset_bmp.pixels,
+			// 	width: Math.floor(tileset_bmp.width / tileSet.tileWidth),
+			// 	height: Math.floor(tileset_bmp.height / tileSet.tileHeight),
+			// };
+
 			// could be a regular FlxTilemap if there are no animated tiles
 			var tilemap = new FlxTilemapExt();
 			tilemap.loadMapFromArray(tileLayer.tileArray, width, height, processedPath, tileSet.tileWidth, tileSet.tileHeight, OFF, tileSet.firstGID, 1, 1);
 
 			// load tilemap into desc
-			for (i in 0...tileLayer.tileArray.length)
-				if (tileLayer.tileArray[i] > 0)
-					tilemap_desc.tiles[i] = tileLayer.tileArray[i];
+			// for (i in 0...tileLayer.tileArray.length)
+			// 	if (tileLayer.tileArray[i] > 0)
+			// 		tilemap_desc.tiles[i] = tileLayer.tileArray[i];
 
 			if (tileLayer.properties.contains("nocollide"))
 			{
@@ -137,9 +152,9 @@ class TiledLevel extends TiledMap
 				foregroundTiles.add(tilemap);
 
 				// load collision data into desc
-				for (i in 0...tileLayer.tileArray.length)
-					if (tileLayer.tileArray[i] > 0)
-						tilemap_desc.collisions[i] = true;
+				// for (i in 0...tileLayer.tileArray.length)
+				// 	if (tileLayer.tileArray[i] > 0)
+				// 		tilemap_desc.collisions[i] = true;
 
 				// WHITE tiles
 
@@ -303,7 +318,7 @@ class TiledLevel extends TiledMap
 			case "player_start":
 				state.player.x = x;
 				state.player.y = y;
-				tilemap_desc.starting_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
+			// tilemap_desc.starting_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 
 			case "checkpoint":
 				var checkpoint_sprite = new FlxSprite();
@@ -315,7 +330,7 @@ class TiledLevel extends TiledMap
 			case "exit":
 				state.exit.x = x;
 				state.exit.y = y;
-				tilemap_desc.exit_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
+				// tilemap_desc.exit_pos.set(Math.floor(x / tileWidth), Math.floor(y / tileHeight));
 		}
 	}
 
