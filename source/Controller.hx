@@ -7,6 +7,7 @@ typedef Control =
 	left:Bool,
 	right:Bool,
 	jump:Bool,
+	down:Bool,
 }
 
 class Controller
@@ -23,9 +24,10 @@ class Controller
 
 class KeyboardController extends Controller
 {
-	public static var left_keys = [Q, LEFT];
+	public static var left_keys = [A, LEFT];
 	public static var right_keys = [D, RIGHT];
-	public static var jump_keys = [Z, UP, SPACE];
+	public static var jump_keys = [W, UP, SPACE];
+	public static var down_keys = [S, DOWN];
 
 	override public function new()
 	{
@@ -37,6 +39,7 @@ class KeyboardController extends Controller
 		control.left = FlxG.keys.anyPressed(left_keys);
 		control.right = FlxG.keys.anyPressed(right_keys);
 		control.jump = FlxG.keys.anyPressed(jump_keys);
+		control.down = FlxG.keys.anyPressed(down_keys);
 	}
 }
 
@@ -55,5 +58,6 @@ class AIController extends Controller
 		control.left = false;
 		control.right = true;
 		control.jump = false;
+		control.down = false;
 	}
 }

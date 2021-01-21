@@ -3,13 +3,19 @@ import Controller.KeyboardController;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
+import flixel.addons.effects.chainable.FlxShakeEffect;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 
 class Character extends FlxSprite
 {
 	var controller:Controller;
-	var control:Control;
+	var control:Control = {
+		left: false,
+		right: false,
+		jump: false,
+		down: false,
+	};
 
 	public var double_jump_unlocked = false;
 
@@ -26,18 +32,14 @@ class Character extends FlxSprite
 
 	var state_machine:StateMachine;
 
+	var pre_down:Bool = false;
+
 	override public function new(controller:Controller, double_jump_unlocked = false)
 	{
 		super();
 
 		this.controller = controller;
 		controller.bind(this);
-
-		this.control = {
-			left: false,
-			right: false,
-			jump: false,
-		};
 
 		this.double_jump_unlocked = double_jump_unlocked;
 
@@ -87,41 +89,47 @@ class Character extends FlxSprite
 
 		switch (state_machine.state)
 		{
-			case GROUND:
-				drag.x = stoping_drag; // we can set this at every frame because it's only taken into account when acceleration is 0
-			case AIR(_):
-				drag.x = air_drag;
-			case WALL(left):
-				acceleration.y *= 0.25;
-				maxVelocity.y = max_velocity_y / 10;
+			case WALL(_):
+				// VERTICAL movement only
+				if (control.down)
+				{
+					maxVelocity.y = max_velocity_y;
+					acceleration.y -= 500;
+				}
+				else
+				{
+					maxVelocity.y = max_velocity_y / 10;
+					acceleration.y -= 1500;
+				}
 				if (velocity.y < 0)
 					velocity.y = 0;
-		}
+			case GROUND:
+				// HORIZONTAL movement only (if jump the state will switch to air)
+				drag.x = stoping_drag; // we can set this at every frame because it's only taken into account when acceleration is 0
 
-		// HORIZONTAL MOVEMENT
-		// don't take into account if stuck to wall
-		switch (state_machine.state)
-		{
-			case WALL(_):
-			default:
 				if (control.left)
 				{
 					if (velocity.x > 0)
 						drag.x = turning_drag;
-					if (isTouching(FlxObject.FLOOR))
-						acceleration.x -= ground_acceleration;
-					else
-						acceleration.x -= air_acceleration;
+					acceleration.x -= ground_acceleration;
 				}
 				if (control.right)
 				{
 					if (velocity.x < 0)
 						drag.x = turning_drag;
-					if (isTouching(FlxObject.FLOOR))
-						acceleration.x += ground_acceleration;
-					else
-						acceleration.x += air_acceleration;
+					acceleration.x += ground_acceleration;
 				}
+			case AIR(_):
+				drag.x = air_drag;
+
+				if (control.left)
+					acceleration.x -= air_acceleration;
+				if (control.right)
+					acceleration.x += air_acceleration;
+			case DROP(_):
+				acceleration.x = 0;
+				velocity.x = 0;
+				velocity.y = maxVelocity.y * 10;
 		}
 	}
 
@@ -134,13 +142,30 @@ class Character extends FlxSprite
 			else
 				velocity.x -= Math.sqrt(2) * jump_velocity;
 			velocity.y -= Math.sqrt(2) * jump_velocity;
+			animation.play("stand");
 		}
 		else
+		{
 			velocity.y -= jump_velocity; // after initial impulse, always jump up
+			animation.play("jump");
+		}
 	}
 
 	public function continue_jump(elapsed:Float)
 		velocity.y -= jump_velocity;
+
+	public function land(shake:Bool = false)
+	{
+		animation.play("land");
+		Content.sound_land.play();
+		if (shake)
+			FlxG.camera.shake(0.001, 0.2);
+	}
+
+	public function stand()
+	{
+		animation.play("stand");
+	}
 }
 
 enum MachineState
@@ -148,6 +173,7 @@ enum MachineState
 	GROUND;
 	AIR(n_jumps:Int);
 	WALL(left:Bool);
+	DROP(n_jumps:Int);
 }
 
 class StateMachine
@@ -203,7 +229,7 @@ class StateMachine
 
 	/*
 	 * automaton:
-	 * 	- states: GROUND, AIR(n_jumps), WALL
+	 * 	- states: GROUND, AIR(n_jumps), WALL, DROP
 	 * 	- transitions:
 	 * 		- falling: GROUND -> AIR(0)
 	 * 			ledge_assist_timer > ledge_assist delay
@@ -222,10 +248,14 @@ class StateMachine
 	 * 		- stick: AIR(n) -> WALL
 	 * 			touching_wall
 	 * 			/ reset stick_wall_timer
+	 * 		- drop: AIR(n) -> DROP
+	 * 			justpressed down key
 	 * 		- unstick: WALL -> AIR(0)
 	 * 			justpressed jump key
 	 * 		 or stick_wall_timer > stick_wall_delay
 	 * 		- land_from_wall: WALL -> GROUND
+	 * 			touching_ground
+	 * 		- land: DROP -> GROUND
 	 * 			touching_ground
 	 */
 	public function update(elapsed:Float, control:Control)
@@ -260,10 +290,11 @@ class StateMachine
 					switch (memory.last_state)
 					{
 						case AIR(_):
-							character.animation.play("land");
-							Content.sound_land.play();
+							character.land();
 						case WALL(_):
-							character.animation.play("stand");
+							character.stand();
+						case DROP(_):
+							character.land(true);
 						default:
 					}
 
@@ -271,7 +302,7 @@ class StateMachine
 				}
 
 				if (character.animation.finished)
-					character.animation.play("stand");
+					character.stand();
 
 				if (just_jumped) // jump
 				{
@@ -291,10 +322,8 @@ class StateMachine
 					memory.hold_jump_timer = 0;
 					memory.jump_buffer_timer = -1;
 
-					if (memory.did_jump)
-						character.animation.play("jump");
-					else
-						character.animation.play("stand");
+					if (!memory.did_jump)
+						character.stand();
 
 					memory.init = false;
 				}
@@ -328,6 +357,8 @@ class StateMachine
 					did_jump = true;
 					switchState(AIR(0));
 				}
+				else if (control.down)
+					switchState(DROP(n));
 				else if (touching_ground)
 					switchState(GROUND);
 				else if (touching_wall)
@@ -346,13 +377,22 @@ class StateMachine
 					memory.init = false;
 				}
 
+				if (left && !control.right || !left && !control.left) // released arrow key too soon to unstick
+				{
+					memory.stick_wall_timer = -1;
+					if (left)
+						character.animation.play("grab_left");
+					else
+						character.animation.play("grab_right");
+				}
+
 				if (just_jumped)
 				{
 					character.jump(elapsed, true, left);
 					did_jump = true;
 					switchState(AIR(0));
 				}
-				if (left
+				else if (left
 					&& !character.isTouching(FlxObject.LEFT)
 					|| !left
 					&& !character.isTouching(FlxObject.RIGHT)) // there's no wall anymore
@@ -366,23 +406,18 @@ class StateMachine
 					else
 						character.animation.play("unstick_right");
 				}
-				else if (left && !control.right || !left && !control.left) // released arrow key too soon to unstick
-				{
-					memory.stick_wall_timer = -1;
-					if (left)
-						character.animation.play("grab_left");
-					else
-						character.animation.play("grab_right");
-				}
 				else if (memory.stick_wall_timer > stick_wall_delay) // unstick from wall if pressed arrow key long enough
-				{
-					if (left)
-						character.velocity.x = character.maxVelocity.x / 10;
-					else
-						character.velocity.x = -character.maxVelocity.x / 10;
 					switchState(AIR(0));
-				}
 				else if (touching_ground)
+					switchState(GROUND);
+
+			case DROP(n):
+				if (memory.init)
+					memory.init = false;
+
+				if (!control.down)
+					switchState(AIR(n));
+				else if (character.isTouching(FlxObject.FLOOR))
 					switchState(GROUND);
 		}
 

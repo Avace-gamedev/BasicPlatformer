@@ -129,7 +129,7 @@ class PlayState extends FlxState
 
 		// UI
 
-		var controls = [["← →", "move"], ["↑", "jump"], ["R", "reset"], ["Esc", "Menu"]];
+		var controls = [["← →", "move"], ["↑", "jump"], ["↓", "drop"], ["R", "reset"], ["Esc", "Menu"]];
 
 		if (area_i > 0 || level_i >= 5)
 		{
@@ -137,6 +137,7 @@ class PlayState extends FlxState
 				["← →", "move"],
 				["↑", "jump"],
 				["↑ ↑", "double jump"],
+				["↓", "drop"],
 				["R", "reset"],
 				["Esc", "Menu"],
 			];
