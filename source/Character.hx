@@ -149,6 +149,7 @@ class Character extends FlxSprite
 			velocity.y -= jump_velocity; // after initial impulse, always jump up
 			animation.play("jump");
 		}
+		Content.sound_jump.play();
 	}
 
 	public function continue_jump(elapsed:Float)
