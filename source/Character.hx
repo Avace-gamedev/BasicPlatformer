@@ -8,6 +8,9 @@ import flixel.tweens.FlxTween;
 
 class Character extends FlxSprite
 {
+	var controller:Controller;
+	var control:Control;
+
 	public var double_jump_unlocked = false;
 
 	var max_velocity_y = 600;
@@ -23,11 +26,21 @@ class Character extends FlxSprite
 
 	var state_machine:StateMachine;
 
-	override public function new(double_jump_unlocked = false)
+	override public function new(controller:Controller, double_jump_unlocked = false)
 	{
 		super();
 
+		this.controller = controller;
+		controller.bind(this);
+
+		this.control = {
+			left: false,
+			right: false,
+			jump: false,
+		};
+
 		this.double_jump_unlocked = double_jump_unlocked;
+
 		state_machine = new StateMachine(this);
 
 		loadGraphic(AssetPaths.character__png, true, 32, 32);
@@ -62,8 +75,10 @@ class Character extends FlxSprite
 		wall_drag = maxVelocity.y * 5000;
 	}
 
-	public function doUpdate(elapsed:Float, control:Control)
+	public function doUpdate(elapsed:Float)
 	{
+		controller.get(control);
+
 		acceleration.x = 0;
 		acceleration.y = 2000; // gravity
 		maxVelocity.y = max_velocity_y;

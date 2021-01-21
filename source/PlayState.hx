@@ -64,7 +64,7 @@ class PlayState extends FlxState
 
 		// END CONFIG
 
-		player = new Character(area_i > 0 || level_i >= 5);
+		player = new Character(new KeyboardController(), area_i > 0 || level_i >= 5);
 		FlxG.camera.follow(player);
 
 		exit = new FlxSprite(0, 0);
@@ -81,12 +81,12 @@ class PlayState extends FlxState
 
 		if (add_ai)
 		{
-			player2 = new Character(area_i > 0 || level_i >= 5);
+			var ai_controller = new AIController(level);
+			player2 = new Character(ai_controller, area_i > 0 || level_i >= 5);
 			player2.x = player.x;
 			player2.y = player.y;
 			player2.color = FlxColor.GRAY;
 			player2.alpha = 0.5;
-			ai_controller = new AIController(player2, level);
 		}
 
 		// add stuff
@@ -174,8 +174,7 @@ class PlayState extends FlxState
 
 	override public function update(elapsed:Float)
 	{
-		var control = KeyboardController.get();
-		player.doUpdate(elapsed, control);
+		player.doUpdate(elapsed);
 
 		super.update(elapsed);
 		level.update(elapsed);
@@ -184,10 +183,10 @@ class PlayState extends FlxState
 		level.collideWithGround(player);
 
 		// collision with red spikes
-		if (level.collideWithSpikes(player) || control.reset)
+		if (level.collideWithSpikes(player) || FlxG.keys.justPressed.R)
 			FlxG.switchState(new PlayState(area_i, level_i, checkpoint_i, Content.sound_damage));
 
-		if (control.menu)
+		if (FlxG.keys.justPressed.ESCAPE)
 			FlxG.switchState(new MenuState());
 
 		// win condition
@@ -197,11 +196,11 @@ class PlayState extends FlxState
 		for (i in 0...checkpoints.length)
 			if (checkpoints.members[i].active)
 				if (FlxG.overlap(checkpoints.members[i], player))
-					hitCheckpoint(i);
+					checkpoint(i);
 
 		if (add_ai)
 		{
-			player2.doUpdate(elapsed, ai_controller.get());
+			player2.doUpdate(elapsed);
 			FlxG.overlap(exit, player2, function(_, _) player2.active = false);
 			level.collideWithGround(player2);
 			if (level.collideWithSpikes(player2))
@@ -209,7 +208,7 @@ class PlayState extends FlxState
 		}
 	}
 
-	public function hitCheckpoint(i:Int)
+	public function checkpoint(i:Int)
 	{
 		Content.sound_checkpoint.play();
 		checkpoints.members[i].active = false;

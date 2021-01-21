@@ -7,49 +7,53 @@ typedef Control =
 	left:Bool,
 	right:Bool,
 	jump:Bool,
-	reset:Bool,
-	menu:Bool,
 }
 
-class KeyboardController
+class Controller
+{
+	var character:Character;
+
+	public function new() {}
+
+	public function bind(character:Character)
+		this.character = character;
+
+	public function get(control:Control) {}
+}
+
+class KeyboardController extends Controller
 {
 	public static var left_keys = [Q, LEFT];
 	public static var right_keys = [D, RIGHT];
 	public static var jump_keys = [Z, UP, SPACE];
-	public static var reset_keys = [R, BACKSPACE];
-	public static var menu_keys = [ESCAPE];
 
-	public static function get()
+	override public function new()
 	{
-		return {
-			left: FlxG.keys.anyPressed(left_keys),
-			right: FlxG.keys.anyPressed(right_keys),
-			jump: FlxG.keys.anyPressed(jump_keys),
-			reset: FlxG.keys.anyJustPressed(reset_keys),
-			menu: FlxG.keys.anyJustPressed(menu_keys),
-		}
+		super();
+	}
+
+	override public function get(control:Control)
+	{
+		control.left = FlxG.keys.anyPressed(left_keys);
+		control.right = FlxG.keys.anyPressed(right_keys);
+		control.jump = FlxG.keys.anyPressed(jump_keys);
 	}
 }
 
-class AIController
+class AIController extends Controller
 {
 	var tiled_map:TiledMap;
-	var character:Character;
 
-	public function new(character:Character, tiled_map:TiledMap)
+	override public function new(tiled_map:TiledMap)
 	{
+		super();
 		this.tiled_map = tiled_map;
-		this.character = character;
 	}
 
-	public function get()
+	override public function get(control:Control)
 	{
-		return {
-			left: false,
-			right: true,
-			jump: false,
-			reset: false,
-			menu: false,
-		}
+		control.left = false;
+		control.right = true;
+		control.jump = false;
 	}
 }
