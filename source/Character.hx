@@ -94,12 +94,12 @@ class Character extends FlxSprite
 				if (control.down)
 				{
 					maxVelocity.y = max_velocity_y;
-					acceleration.y -= 500;
+					acceleration.y -= 300;
 				}
 				else
 				{
 					maxVelocity.y = max_velocity_y / 10;
-					acceleration.y -= 1500;
+					acceleration.y -= 1000;
 				}
 				if (velocity.y < 0)
 					velocity.y = 0;
@@ -172,7 +172,7 @@ class Character extends FlxSprite
 enum MachineState
 {
 	GROUND;
-	AIR(n_jumps:Int);
+	AIR(n_jumps:Int, from_wall:Bool);
 	WALL(left:Bool);
 	DROP(n_jumps:Int);
 }
@@ -185,8 +185,10 @@ class StateMachine
 	var max_n_jumps:Int = 2;
 	var hold_jump_delay:Float = 0.1;
 	var jump_buffer_delay:Float = 0.2;
-	var ledge_assist_delay:Float = 0.05;
-	var stick_wall_delay:Float = 0.3;
+	var ground_ledge_assist_delay:Float = 0.05;
+	var wall_ledge_assist_delay:Float = 0.2;
+	var touching_wall_delay:Float = 0.2;
+	var stick_wall_delay:Float = 0.2;
 
 	// ---- END PARAMETERS
 	var memory = {
@@ -194,12 +196,14 @@ class StateMachine
 		hold_jump_timer: -1.0,
 		jump_buffer_timer: -1.0,
 		ledge_assist_timer: -1.0,
+		touching_wall_timer: -1.0,
 		stick_wall_timer: -1.0,
 		//
 		init: true,
-		last_state: AIR(1),
+		last_state: AIR(1, false),
 		did_jump: false,
 		pre_jump: false,
+		ledge_assist_wall_left: false,
 	};
 
 	public var state(default, null):MachineState;
@@ -210,8 +214,8 @@ class StateMachine
 	public function new(character:Character)
 	{
 		this.character = character;
-		memory.last_state = AIR(1);
-		state = AIR(1);
+		memory.last_state = AIR(1, false);
+		state = AIR(1, false);
 
 		if (character.double_jump_unlocked)
 			max_n_jumps = 2;
@@ -233,21 +237,29 @@ class StateMachine
 	 * 	- states: GROUND, AIR(n_jumps), WALL, DROP
 	 * 	- transitions:
 	 * 		- falling: GROUND -> AIR(0)
-	 * 			ledge_assist_timer > ledge_assist delay
+	 * 			ledge_assist_timer > ground_ledge_assist delay
 	 * 			/ reset ledge_assist_timer
 	 * 		- jump: GROUND -> AIR(0)
 	 * 			justpressed jump key
 	 * 		- double_jump: AIR(n) -> AIR(n+1)
 	 * 			justpressed jump key
 	 * 		and n+1 < max_n_jumps
-	 * 		- buffered_jump: AIR(n) -> AIR(0)
+	 * 		- wall_ledge_assist: AIR(n) -> AIR(0)
+	 * 			touching_wall
+	 * 		and ledge_assist_timer <= wall_ledge_assist
+	 * 		and wall_ledge_assist
+	 * 		- buffered_jump (ground): AIR(n) -> AIR(0)
 	 * 			touching_ground
+	 * 		and jump_buffer_timer >= 0 && jump_buffer_timer <= jump_buffer_delay
+	 * 			/ reset jump_buffer_timer
+	 * 		- buffered_jump (wall): AIR(n) -> AIR(0)
+	 * 			touching_wall
 	 * 		and jump_buffer_timer >= 0 && jump_buffer_timer <= jump_buffer_delay
 	 * 			/ reset jump_buffer_timer
 	 * 		- land: AIR(n) -> GROUND
 	 * 			touching_ground
 	 * 		- stick: AIR(n) -> WALL
-	 * 			touching_wall
+	 * 			touching_wall && ledge_assist_timer > wall_ledge_assist_delay
 	 * 			/ reset stick_wall_timer
 	 * 		- drop: AIR(n) -> DROP
 	 * 			justpressed down key
@@ -268,17 +280,6 @@ class StateMachine
 		var touching_wall_left = character.isTouching(FlxObject.LEFT);
 		var touching_wall = touching_wall_left || character.isTouching(FlxObject.RIGHT);
 		var did_jump = false;
-
-		// THIS IS UGLY !!!
-		// keep stuck to the wall
-		// pb is that I need to start applying x acceleration as soon as
-		// character touches the wall, if I do it in state WALL
-		// I miss the first frame (because I use weak transitions)
-		// should I switch to strong transitions ? ... :/
-		if (touching_wall_left)
-			character.acceleration.x = -100;
-		else if (touching_wall && !touching_wall_left)
-			character.acceleration.x = 100;
 
 		// UPDATE STATE
 		switch (state)
@@ -309,19 +310,26 @@ class StateMachine
 				{
 					character.jump(elapsed);
 					did_jump = true;
-					switchState(AIR(0));
+					switchState(AIR(0, false));
 				}
 				else if (!touching_ground && memory.ledge_assist_timer < 0) // falling
 					memory.ledge_assist_timer = 0;
 				else if (touching_ground && memory.ledge_assist_timer >= 0) // need to reset timer
 					memory.ledge_assist_timer = -1;
-				else if (memory.ledge_assist_timer > ledge_assist_delay) // fall
-					switchState(AIR(0));
-			case AIR(n):
+				else if (memory.ledge_assist_timer > ground_ledge_assist_delay) // fall
+					switchState(AIR(0, false));
+			case AIR(n, from_wall):
+				// in this state, ledge assist will be used to
+				// remember last time a wall was touched to trigger
+				// a wall jump even if the player hit the key a bit
+				// too late
+
 				if (memory.init)
 				{
 					memory.hold_jump_timer = 0;
 					memory.jump_buffer_timer = -1;
+					memory.touching_wall_timer = -1;
+					memory.ledge_assist_timer = -1;
 
 					if (!memory.did_jump)
 						character.stand();
@@ -329,13 +337,22 @@ class StateMachine
 					memory.init = false;
 				}
 
+				if (!touching_wall)
+					memory.touching_wall_timer = -1;
+
 				if (!control.jump)
 					memory.hold_jump_timer = -1;
 
-				if (just_jumped && n + 1 < max_n_jumps) // double jump
+				if (just_jumped && memory.ledge_assist_timer >= 0 && memory.ledge_assist_timer <= wall_ledge_assist_delay)
 				{
-					switchState(AIR(n + 1));
+					character.jump(elapsed, true, memory.ledge_assist_wall_left);
+					switchState(AIR(0, true));
+					did_jump = true;
+				}
+				else if (just_jumped && n + 1 < max_n_jumps) // double jump
+				{
 					character.jump(elapsed);
+					switchState(AIR(n + 1, from_wall));
 					did_jump = true;
 				}
 				else if (!just_jumped
@@ -348,7 +365,7 @@ class StateMachine
 				{
 					character.jump(elapsed);
 					did_jump = true;
-					switchState(AIR(0));
+					switchState(AIR(0, false));
 				}
 				else if (touching_wall
 					&& memory.jump_buffer_timer >= 0
@@ -356,14 +373,37 @@ class StateMachine
 				{
 					character.jump(elapsed, true, touching_wall_left);
 					did_jump = true;
-					switchState(AIR(0));
+					switchState(AIR(0, true));
 				}
 				else if (control.down)
 					switchState(DROP(n));
 				else if (touching_ground)
 					switchState(GROUND);
 				else if (touching_wall)
-					switchState(WALL(touching_wall_left));
+				{
+					memory.ledge_assist_timer = 0;
+					memory.ledge_assist_wall_left = touching_wall_left;
+
+					// if we're not coming from another wall,
+					// we start counting time to stick eventually
+					if (!from_wall && memory.touching_wall_timer < 0)
+						memory.touching_wall_timer = 0;
+
+					// if we come from wall, or if the timer has reached its horizon,
+					// we stick !
+					if (from_wall || memory.touching_wall_timer > touching_wall_delay)
+					{
+						switchState(WALL(touching_wall_left));
+						// UGLY BUT NECESSARY ??
+						// if no x movement, horizontal collisions are not set
+						// so we add x acceleration to make the character
+						// collide with the wall and set isTouching to LEFT or RIGHT
+						if (touching_wall_left)
+							character.acceleration.x -= 1;
+						else
+							character.acceleration.x += 1;
+					}
+				}
 
 				if (just_jumped && !did_jump) // pressed jump key but didn't jump, buffer it
 					memory.jump_buffer_timer = 0;
@@ -378,6 +418,15 @@ class StateMachine
 					memory.init = false;
 				}
 
+				// UGLY BUT NECESSARY ??
+				// if no x movement, horizontal collisions are not set
+				// so we add x acceleration to make the character
+				// collide with the wall and set isTouching to LEFT or RIGHT
+				if (left)
+					character.acceleration.x -= 1;
+				else
+					character.acceleration.x += 1;
+
 				if (left && !control.right || !left && !control.left) // released arrow key too soon to unstick
 				{
 					memory.stick_wall_timer = -1;
@@ -391,13 +440,13 @@ class StateMachine
 				{
 					character.jump(elapsed, true, left);
 					did_jump = true;
-					switchState(AIR(0));
+					switchState(AIR(0, true));
 				}
 				else if (left
 					&& !character.isTouching(FlxObject.LEFT)
 					|| !left
 					&& !character.isTouching(FlxObject.RIGHT)) // there's no wall anymore
-					switchState(AIR(0));
+					switchState(AIR(0, true));
 				else if ((left && control.right || !left && control.left)
 					&& memory.stick_wall_timer < 0) // if character stuck and horizontal movement asked
 				{
@@ -408,7 +457,7 @@ class StateMachine
 						character.animation.play("unstick_right");
 				}
 				else if (memory.stick_wall_timer > stick_wall_delay) // unstick from wall if pressed arrow key long enough
-					switchState(AIR(0));
+					switchState(AIR(0, true));
 				else if (touching_ground)
 					switchState(GROUND);
 
@@ -417,7 +466,7 @@ class StateMachine
 					memory.init = false;
 
 				if (!control.down)
-					switchState(AIR(n));
+					switchState(AIR(n, false));
 				else if (character.isTouching(FlxObject.FLOOR))
 					switchState(GROUND);
 		}
@@ -435,6 +484,9 @@ class StateMachine
 
 		if (memory.ledge_assist_timer >= 0)
 			memory.ledge_assist_timer += elapsed;
+
+		if (memory.touching_wall_timer >= 0)
+			memory.touching_wall_timer += elapsed;
 
 		if (memory.stick_wall_timer >= 0)
 			memory.stick_wall_timer += elapsed;
